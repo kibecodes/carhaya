@@ -32,6 +32,12 @@ export default auth(async (req) => {
   // Redirect logged-in users away from auth routes (login/register) to homepage
   if (isAuthRoutes) {
     if (isLoggedIn) {
+      if (token && token.exp) {
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (token.exp < currentTime) {
+          return Response.redirect(new URL("/login", req.url));
+        }
+      }
       return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
     }
     return null;

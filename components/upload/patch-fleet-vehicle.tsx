@@ -34,7 +34,6 @@ import { UpdateVehicleSchema } from "@/schemas";
 import { useRouter, useSearchParams } from "next/navigation";
 import { fetchVehicleById } from "@/app/(main)/vehicles/all-vehicles/details/[id]/page";
 import type { Vehicle } from "@/types";
-import Compressor from "compressorjs";
 
 const UpdateFleetVehicle = () => {
     const [error, setError] = useState<string | undefined>("");
@@ -73,11 +72,11 @@ const UpdateFleetVehicle = () => {
             vehicleYearOfManufacture: vehicleDetails.vehicleYearOfManufacture,
             vehicleBodyType: vehicleDetails.vehicleBodyType,
             vehicleMillage: vehicleDetails.vehicleMillage,
-            vehicleFrontImage: vehicleDetails.vehicleFrontImage,
-            vehicleSideImage: vehicleDetails.vehicleSideImage,
-            vehicleBackImage: vehicleDetails.vehicleBackImage,
-            vehicleInteriorFrontImage: vehicleDetails.vehicleInteriorFrontImage,
-            vehicleInteriorBackImage: vehicleDetails.vehicleInteriorBackImage,
+            vehicleFrontImage: null,
+            vehicleSideImage: null,
+            vehicleBackImage: null,
+            vehicleInteriorFrontImage: null,
+            vehicleInteriorBackImage: null,
             unitCostPerDay: Number(vehicleDetails.unitCostPerDay),
             agencyName: vehicleDetails.agencyName,
             ownerUserId: vehicleDetails.ownerUserId,
@@ -93,37 +92,19 @@ const UpdateFleetVehicle = () => {
         });
     };
 
-    const compressImage = (file: File, quality = 0.7): Promise<File> => {
-        return new Promise((resolve, reject) => {
-            new Compressor(file, {
-                quality: quality,
-                success(result: Blob) {
-                    const compressedFile = new File([result], file.name, {
-                        type: file.type,
-                        lastModified: Date.now(),
-                    });
-                    resolve(compressedFile);
-                },
-                error(err) {
-                    reject(err);
-                },
-            });
-        });
-    };
-
     const handleImageUpload = async (
         e: React.ChangeEvent<HTMLInputElement>,
         imageType: keyof typeof images
     ) => {
         const file = e.target.files?.[0];
         if (file) {
-            const compressedFile = await compressImage(file, 0.6);
-            const base64 = await convertToBase64(compressedFile);
+            const base64 = await convertToBase64(file);
             setImages((prev) => ({
                 ...prev,
-                [imageType]: compressedFile,
+                [imageType]: file,
                 [`${imageType}URL`]: base64,
             }));
+            console.log(`${imageType} base64 string: `, base64);
         }
     };
 
@@ -156,27 +137,7 @@ const UpdateFleetVehicle = () => {
                     vehicleMillage: data.vehicleMillage,
                     unitCostPerDay: data.unitCostPerDay,
                     agencyName: data.agencyName,
-                    vehicleFrontImage: data.vehicleFrontImage,
-                    vehicleSideImage: data.vehicleSideImage,
-                    vehicleBackImage: data.vehicleBackImage,
-                    vehicleInteriorFrontImage: data.vehicleInteriorFrontImage,
-                    vehicleInteriorBackImage: data.vehicleInteriorBackImage,
                 });
-
-                // Set the fetched images into the images state
-                setImages({
-                    vehicleFrontImage: null, // No file yet, only URL fetched
-                    vehicleFrontImageURL: data.vehicleFrontImage || null,
-                    vehicleSideImage: null,
-                    vehicleSideImageURL: data.vehicleSideImage || null,
-                    vehicleBackImage: null,
-                    vehicleBackImageURL: data.vehicleBackImage || null,
-                    vehicleInteriorFrontImage: null,
-                    vehicleInteriorFrontImageURL: data.vehicleInteriorFrontImage || null,
-                    vehicleInteriorBackImage: null,
-                    vehicleInteriorBackImageURL: data.vehicleInteriorBackImage || null,
-                });
-
                 setVehicleDetails(data);
             } catch (error) {
                 console.log("Error fetching vehicle", error);
@@ -196,23 +157,19 @@ const UpdateFleetVehicle = () => {
       }
     }, [error, success]);
 
-    const onSubmitUpdate = (values: z.infer<typeof UpdateVehicleSchema>) => {
-        const validatedFields = UpdateVehicleSchema.safeParse(values);
+    const onSubmitPatch = (values: z.infer<typeof UpdateVehicleSchema>) => {
+        const patchOperations = [];
+        const currentData = form.getValues(); 
 
-        if (!validatedFields.success) {
-            return setError("Invalid Fields!");
-        }
-
-        let validatedData = validatedFields.data;
-
-        validatedData = {
-            ...validatedFields.data,
-            vehicleFrontImage: vehicleDetails?.vehicleFrontImage || images.vehicleFrontImageURL,
-            vehicleSideImage: vehicleDetails?.vehicleSideImage || images.vehicleSideImageURL,
-            vehicleBackImage: vehicleDetails?.vehicleBackImage || images.vehicleBackImageURL,
-            vehicleInteriorFrontImage: vehicleDetails?.vehicleInteriorFrontImage || images.vehicleInteriorFrontImageURL,
-            vehicleInteriorBackImage: vehicleDetails?.vehicleInteriorBackImage || images.vehicleInteriorBackImageURL,
-        };
+        Object.keys(currentData).forEach((key) => {
+            if (currentData[key] !== values[key]) {
+                patchOperations.push({
+                    op: "replace", 
+                    path: key, 
+                    value: values[key] 
+                });
+            }
+        });
 
         startTransition(async () => {
             setFormDisabled(true);
@@ -221,19 +178,20 @@ const UpdateFleetVehicle = () => {
                 const sessionToken = await getSession();
                 const token = sessionToken?.user.accessToken;
 
-                if (token) {
-                    const response = await axios.put(`https://carhire.transfa.org/api/vehicles/${vehicleId}`, 
-                        validatedData, 
+                if (token && vehicleId) {
+                    const response = await axios.patch(
+                        `https://carhire.transfa.org/api/vehicles/${vehicleId}`,
+                        { operations: patchOperations },
                         {
                             headers: {
-                                Authorization: `Bearer ${token}`,
-                                'Content-Type': 'application/json'
+                            Authorization: `Bearer ${token}`,
+                            'Content-Type': 'application/json'
                             }
                         }
                     );
                     
                     if (response.status === 200) {
-                        setSuccess("Vehicle updated successfully!");
+                        setSuccess("Vehicle patched successfully!");
                         form.reset();
                         setImages({
                             vehicleFrontImage: null,
@@ -247,13 +205,11 @@ const UpdateFleetVehicle = () => {
                             vehicleInteriorBackImage: null,
                             vehicleInteriorBackImageURL: null,
                         });
-                        router.refresh();
                     } else {
-                        setError("Vehicle update failed. Please try again.");
+                        setError("Vehicle patch failed. Please try again.");
                     }
                 }
-            }
-             catch (error) {
+            } catch (error) {
                 handleAxiosError(error);
             } finally {
                 setFormDisabled(false);
@@ -327,7 +283,7 @@ const UpdateFleetVehicle = () => {
                 </CardHeader>
                 <CardContent>
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmitUpdate)} className="space-y-5">
+                        <form onSubmit={form.handleSubmit(onSubmitPatch)} className="space-y-5">
                             <div className="grid grid-cols-3 gap-5">
                                 <FormField
                                     control={form.control}
@@ -518,44 +474,63 @@ const UpdateFleetVehicle = () => {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Front</FormLabel>
-                                            <div className="relative group">
-                                                {images.vehicleFrontImageURL ? (
-                                                    <>
-                                                        <Image 
-                                                            src={images.vehicleFrontImageURL} 
-                                                            alt="Front Image" 
-                                                            width={150} 
-                                                            height={150} 
-                                                            className="w-full h-50 object-contain rounded-md" 
-                                                        />
-                                                        <Button 
-                                                            variant="destructive" 
-                                                            size="sm" 
-                                                            className="ml-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" 
-                                                            onClick={() => removeImage("vehicleFrontImage")}>
-                                                                <TfiTrash size={18} />
-                                                        </Button>
-                                                    </>
-                                                ) : (
-                                                    <FormControl>
-                                                        <div className="flex flex-col items-center justify-center">
-                                                            <label htmlFor="front-image-upload" className="flex flex-col items-center justify-center w-full cursor-pointer border-2 border-dashed border-gray-300 p-6 rounded-lg hover:bg-gray-50 transition">
-                                                                <FiImage size={40} className="text-gray-500 mb-3" />
-                                                                <span className="text-gray-500 text-sm">Upload Front Image</span>
-                                                            </label>
-                                                            <Input
-                                                                id="front-image-upload"
-                                                                type="file"
-                                                                onChange={(e) => handleImageUpload(e, "vehicleFrontImage")}
-                                                                accept="image/*"
-                                                                className="hidden"
-                                                                name={field.name}
-                                                                ref={field.ref}
+                                            {!images.vehicleFrontImageURL && vehicleDetails?.vehicleFrontImage ? (
+                                                <div className="relative group">
+                                                    <Image 
+                                                        src={vehicleDetails.vehicleFrontImage} 
+                                                        alt="Front Image" 
+                                                        width={150} 
+                                                        height={150} 
+                                                        className="w-full h-50 object-contain rounded-md" 
+                                                    />
+                                                    <Button 
+                                                        variant="destructive" 
+                                                        size="sm" 
+                                                        className="ml-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                                        onClick={() => removeImage("vehicleFrontImage")}>
+                                                        <TfiTrash size={18} />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="relative group">
+                                                    {images.vehicleFrontImageURL ? (
+                                                        <>
+                                                            <Image 
+                                                                src={images.vehicleFrontImageURL} 
+                                                                alt="Front Image" 
+                                                                width={150} 
+                                                                height={150} 
+                                                                className="w-full h-50 object-contain rounded-md" 
                                                             />
-                                                        </div>
-                                                    </FormControl>
-                                                )}
-                                            </div>
+                                                            <Button 
+                                                                variant="destructive" 
+                                                                size="sm" 
+                                                                className="ml-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                                                onClick={() => removeImage("vehicleFrontImage")}>
+                                                                    <TfiTrash size={18} />
+                                                            </Button>
+                                                        </>
+                                                    ) : (
+                                                        <FormControl>
+                                                            <div className="flex flex-col items-center justify-center">
+                                                                <label htmlFor="front-image-upload" className="flex flex-col items-center justify-center w-full cursor-pointer border-2 border-dashed border-gray-300 p-6 rounded-lg hover:bg-gray-50 transition">
+                                                                    <FiImage size={40} className="text-gray-500 mb-3" />
+                                                                    <span className="text-gray-500 text-sm">Upload Front Image</span>
+                                                                </label>
+                                                                <Input
+                                                                    id="front-image-upload"
+                                                                    type="file"
+                                                                    onChange={(e) => handleImageUpload(e, "vehicleFrontImage")}
+                                                                    accept="image/*"
+                                                                    className="hidden"
+                                                                    name={field.name}
+                                                                    ref={field.ref}
+                                                                />
+                                                            </div>
+                                                        </FormControl>
+                                                    )}
+                                                </div>
+                                            )}
                                         </FormItem>
                                     )}
                                 />
@@ -566,44 +541,63 @@ const UpdateFleetVehicle = () => {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Side</FormLabel>
-                                            <div className="relative group">
-                                                {images.vehicleSideImageURL ? (
-                                                    <>
-                                                        <Image 
-                                                            src={images.vehicleSideImageURL} 
-                                                            alt="Side Image" 
-                                                            width={150} 
-                                                            height={150} 
-                                                            className="w-full h-50 object-contain rounded-md" 
-                                                        />
-                                                        <Button 
-                                                            variant="destructive" 
-                                                            size="sm" 
-                                                            className="ml-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" 
-                                                            onClick={() => removeImage("vehicleSideImage")}>
-                                                            <TfiTrash size={18} />
-                                                        </Button>
-                                                    </>
-                                                ) : (
-                                                    <FormControl>
-                                                        <div className="flex flex-col items-center justify-center">
-                                                            <label htmlFor="side-image-upload" className="flex flex-col items-center justify-center w-full cursor-pointer border-2 border-dashed border-gray-300 p-6 rounded-lg hover:bg-gray-50 transition">
-                                                                <FiImage size={40} className="text-gray-500 mb-3" />
-                                                                <span className="text-gray-500 text-sm">Upload Side Image</span>
-                                                            </label>
-                                                            <Input
-                                                                id="side-image-upload"
-                                                                type="file"
-                                                                onChange={(e) => handleImageUpload(e, "vehicleSideImage")}
-                                                                accept="image/*"
-                                                                className="hidden"
-                                                                name={field.name}
-                                                                ref={field.ref}
+                                            {!images.vehicleSideImageURL && vehicleDetails?.vehicleSideImage ? (
+                                                <div className="relative group">
+                                                    <Image 
+                                                        src={vehicleDetails.vehicleSideImage} 
+                                                        alt="Side Image" 
+                                                        width={150} 
+                                                        height={150} 
+                                                        className="w-full h-50 object-contain rounded-md" 
+                                                    />
+                                                    <Button 
+                                                        variant="destructive" 
+                                                        size="sm" 
+                                                        className="ml-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                                        onClick={() => removeImage("vehicleSideImage")}>
+                                                        <TfiTrash size={18} />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="relative group">
+                                                    {images.vehicleSideImageURL ? (
+                                                        <>
+                                                            <Image 
+                                                                src={images.vehicleSideImageURL} 
+                                                                alt="Side Image" 
+                                                                width={150} 
+                                                                height={150} 
+                                                                className="w-full h-50 object-contain rounded-md" 
                                                             />
-                                                        </div>
-                                                    </FormControl>
-                                                )}
-                                            </div>
+                                                            <Button 
+                                                                variant="destructive" 
+                                                                size="sm" 
+                                                                className="ml-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                                                onClick={() => removeImage("vehicleSideImage")}>
+                                                                    <TfiTrash size={18} />
+                                                            </Button>
+                                                        </>
+                                                    ) : (
+                                                        <FormControl>
+                                                            <div className="flex flex-col items-center justify-center">
+                                                                <label htmlFor="side-image-upload" className="flex flex-col items-center justify-center w-full cursor-pointer border-2 border-dashed border-gray-300 p-6 rounded-lg hover:bg-gray-50 transition">
+                                                                    <FiImage size={40} className="text-gray-500 mb-3" />
+                                                                    <span className="text-gray-500 text-sm">Upload Side Image</span>
+                                                                </label>
+                                                                <Input
+                                                                    id="side-image-upload"
+                                                                    type="file"
+                                                                    onChange={(e) => handleImageUpload(e, "vehicleSideImage")}
+                                                                    accept="image/*"
+                                                                    className="hidden"
+                                                                    name={field.name}
+                                                                    ref={field.ref}
+                                                                />
+                                                            </div>
+                                                        </FormControl>
+                                                    )}
+                                                </div>
+                                            )}
                                         </FormItem>
                                     )}
                                 />
@@ -614,44 +608,63 @@ const UpdateFleetVehicle = () => {
                                     render={({ field }) => (
                                        <FormItem>
                                             <FormLabel>Back</FormLabel>
-                                            <div className="relative group">
-                                                {images.vehicleBackImageURL ? (
-                                                    <>
-                                                        <Image 
-                                                            src={images.vehicleBackImageURL} 
-                                                            alt="Back Image" 
-                                                            width={150} 
-                                                            height={150} 
-                                                            className="w-full h-50 object-contain rounded-md" 
-                                                        />
-                                                        <Button 
-                                                            variant="destructive" 
-                                                            size="sm" 
-                                                            className="ml-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" 
-                                                            onClick={() => removeImage("vehicleBackImage")}>
-                                                            <TfiTrash size={18} />
-                                                        </Button>
-                                                    </>
-                                                ) : (
-                                                    <FormControl>
-                                                        <div className="flex flex-col items-center justify-center">
-                                                            <label htmlFor="back-image-upload" className="flex flex-col items-center justify-center w-full cursor-pointer border-2 border-dashed border-gray-300 p-6 rounded-lg hover:bg-gray-50 transition">
-                                                                <FiImage size={40} className="text-gray-500 mb-3" />
-                                                                <span className="text-gray-500 text-sm">Upload Back Image</span>
-                                                            </label>
-                                                            <Input
-                                                                id="back-image-upload"
-                                                                type="file"
-                                                                onChange={(e) => handleImageUpload(e, "vehicleBackImage")}
-                                                                accept="image/*"
-                                                                className="hidden"
-                                                                name={field.name}
-                                                                ref={field.ref}
+                                            {!images.vehicleBackImageURL && vehicleDetails?.vehicleBackImage ? (
+                                                <div className="relative group">
+                                                    <Image 
+                                                        src={vehicleDetails.vehicleBackImage} 
+                                                        alt="Back Image" 
+                                                        width={150} 
+                                                        height={150} 
+                                                        className="w-full h-50 object-contain rounded-md" 
+                                                    />
+                                                    <Button 
+                                                        variant="destructive" 
+                                                        size="sm" 
+                                                        className="ml-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                                        onClick={() => removeImage("vehicleBackImage")}>
+                                                        <TfiTrash size={18} />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="relative group">
+                                                    {images.vehicleBackImageURL ? (
+                                                        <>
+                                                            <Image 
+                                                                src={images.vehicleBackImageURL} 
+                                                                alt="Back Image" 
+                                                                width={150} 
+                                                                height={150} 
+                                                                className="w-full h-50 object-contain rounded-md" 
                                                             />
-                                                        </div>
-                                                    </FormControl>
-                                                )}
-                                            </div>
+                                                            <Button 
+                                                                variant="destructive" 
+                                                                size="sm" 
+                                                                className="ml-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                                                onClick={() => removeImage("vehicleBackImage")}>
+                                                                    <TfiTrash size={18} />
+                                                            </Button>
+                                                        </>
+                                                    ) : (
+                                                        <FormControl>
+                                                            <div className="flex flex-col items-center justify-center">
+                                                                <label htmlFor="back-image-upload" className="flex flex-col items-center justify-center w-full cursor-pointer border-2 border-dashed border-gray-300 p-6 rounded-lg hover:bg-gray-50 transition">
+                                                                    <FiImage size={40} className="text-gray-500 mb-3" />
+                                                                    <span className="text-gray-500 text-sm">Upload Back Image</span>
+                                                                </label>
+                                                                <Input
+                                                                    id="back-image-upload"
+                                                                    type="file"
+                                                                    onChange={(e) => handleImageUpload(e, "vehicleBackImage")}
+                                                                    accept="image/*"
+                                                                    className="hidden"
+                                                                    name={field.name}
+                                                                    ref={field.ref}
+                                                                />
+                                                            </div>
+                                                        </FormControl>
+                                                    )}
+                                                </div>
+                                            )}
                                         </FormItem>
                                     )}
                                 />
@@ -662,6 +675,25 @@ const UpdateFleetVehicle = () => {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Front Interior</FormLabel>
+                                            {!images.vehicleInteriorFrontImageURL && vehicleDetails?.vehicleInteriorFrontImage ? (
+                                                <div className="relative group">
+                                                    <Image 
+                                                        src={vehicleDetails.vehicleInteriorFrontImage} 
+                                                        alt="Front Interior Image" 
+                                                        width={150} 
+                                                        height={150} 
+                                                        className="w-full h-50 object-contain rounded-md" 
+                                                    />
+                                                    <Button 
+                                                        variant="destructive" 
+                                                        size="sm" 
+                                                        className="ml-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                                        onClick={() => removeImage("vehicleInteriorFrontImage")}>
+                                                        <TfiTrash size={18} />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                // Show uploaded image or fallback to upload option
                                                 <div className="relative group">
                                                     {images.vehicleInteriorFrontImageURL ? (
                                                         <>
@@ -677,7 +709,7 @@ const UpdateFleetVehicle = () => {
                                                                 size="sm" 
                                                                 className="ml-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" 
                                                                 onClick={() => removeImage("vehicleInteriorFrontImage")}>
-                                                                <TfiTrash size={18} />
+                                                                    <TfiTrash size={18} />
                                                             </Button>
                                                         </>
                                                     ) : (
@@ -700,6 +732,7 @@ const UpdateFleetVehicle = () => {
                                                         </FormControl>
                                                     )}
                                                 </div>
+                                            )}
                                         </FormItem>
                                     )}
                                 />
@@ -710,47 +743,69 @@ const UpdateFleetVehicle = () => {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Back Interior</FormLabel>
-                                            <div className="relative group">
-                                                {images.vehicleInteriorBackImageURL ? (
-                                                    <>
-                                                        <Image 
-                                                            src={images.vehicleInteriorBackImageURL} 
-                                                            alt="Back Interior Image" 
-                                                            width={150} 
-                                                            height={150} 
-                                                            className="w-full h-50 object-contain rounded-md" 
-                                                        />
-                                                        <Button 
-                                                            variant="destructive" 
-                                                            size="sm" 
-                                                            className="ml-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" 
-                                                            onClick={() => removeImage("vehicleInteriorBackImage")}>
-                                                            <TfiTrash size={18} />
-                                                        </Button>
-                                                    </>
-                                                ) : (
-                                                    <FormControl>
-                                                        <div className="flex flex-col items-center justify-center">
-                                                            <label htmlFor="back-interior-image-upload" className="flex flex-col items-center justify-center w-full cursor-pointer border-2 border-dashed border-gray-300 p-6 rounded-lg hover:bg-gray-50 transition">
-                                                                <FiImage size={40} className="text-gray-500 mb-3" />
-                                                                <span className="text-gray-500 text-sm">Upload Back Interior Image</span>
-                                                            </label>
-                                                            <Input
-                                                                id="back-interior-image-upload"
-                                                                type="file"
-                                                                onChange={(e) => handleImageUpload(e, "vehicleInteriorBackImage")}
-                                                                accept="image/*"
-                                                                className="hidden"
-                                                                name={field.name}
-                                                                ref={field.ref}
+                                            {!images.vehicleInteriorBackImageURL && vehicleDetails?.vehicleInteriorBackImage ? (
+                                                // Display existing image from vehicle details if no new image is uploaded
+                                                <div className="relative group">
+                                                    <Image 
+                                                        src={vehicleDetails.vehicleInteriorBackImage} 
+                                                        alt="Back Interior Image" 
+                                                        width={150} 
+                                                        height={150} 
+                                                        className="w-full h-50 object-contain rounded-md" 
+                                                    />
+                                                    <Button 
+                                                        variant="destructive" 
+                                                        size="sm" 
+                                                        className="ml-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                                        onClick={() => removeImage("vehicleInteriorBackImage")}>
+                                                        <TfiTrash size={18} />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                // Show uploaded image or fallback to upload option
+                                                <div className="relative group">
+                                                    {images.vehicleInteriorBackImageURL ? (
+                                                        <>
+                                                            <Image 
+                                                                src={images.vehicleInteriorBackImageURL} 
+                                                                alt="Back Interior Image" 
+                                                                width={150} 
+                                                                height={150} 
+                                                                className="w-full h-50 object-contain rounded-md" 
                                                             />
-                                                        </div>
-                                                    </FormControl>
-                                                )}
-                                            </div>
+                                                            <Button 
+                                                                variant="destructive" 
+                                                                size="sm" 
+                                                                className="ml-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                                                onClick={() => removeImage("vehicleInteriorBackImage")}>
+                                                                    <TfiTrash size={18} />
+                                                            </Button>
+                                                        </>
+                                                    ) : (
+                                                        <FormControl>
+                                                            <div className="flex flex-col items-center justify-center">
+                                                                <label htmlFor="back-interior-image-upload" className="flex flex-col items-center justify-center w-full cursor-pointer border-2 border-dashed border-gray-300 p-6 rounded-lg hover:bg-gray-50 transition">
+                                                                    <FiImage size={40} className="text-gray-500 mb-3" />
+                                                                    <span className="text-gray-500 text-sm">Upload Back Interior Image</span>
+                                                                </label>
+                                                                <Input
+                                                                    id="back-interior-image-upload"
+                                                                    type="file"
+                                                                    onChange={(e) => handleImageUpload(e, "vehicleInteriorBackImage")}
+                                                                    accept="image/*"
+                                                                    className="hidden"
+                                                                    name={field.name}
+                                                                    ref={field.ref}
+                                                                />
+                                                            </div>
+                                                        </FormControl>
+                                                    )}
+                                                </div>
+                                            )}
                                         </FormItem>
                                     )}
                                 />
+
                             </div>
                         </form>
                     </Form>
@@ -759,7 +814,7 @@ const UpdateFleetVehicle = () => {
                     <Button 
                         type="submit" 
                         className="bg-orange-400 hover:bg-orange-500" 
-                        onClick={form.handleSubmit(onSubmitUpdate)}
+                        onClick={form.handleSubmit(onSubmitPatch)}
                         disabled={isFormDisabled || isPending}
                     >
                         {isFormDisabled || isPending ? "Updating..." : "Update"}

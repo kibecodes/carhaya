@@ -31,7 +31,7 @@ import { BsExclamationTriangle } from "react-icons/bs";
 import { AiOutlineLoading3Quarters } from "react-icons/ai"; 
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { VehicleSchema } from "@/schemas";
-
+import Compressor from "compressorjs";
 
 const NewFleetVehicle = () => {
     const [error, setError] = useState<string | undefined>("");
@@ -83,19 +83,37 @@ const NewFleetVehicle = () => {
         });
     };
 
+    const compressImage = (file: File, quality = 0.7): Promise<File> => {
+        return new Promise((resolve, reject) => {
+            new Compressor(file, {
+                quality: quality,
+                success(result: Blob) {
+                    const compressedFile = new File([result], file.name, {
+                        type: file.type,
+                        lastModified: Date.now(),
+                    });
+                    resolve(compressedFile);
+                },
+                error(err) {
+                    reject(err);
+                },
+            });
+        });
+    };
+
     const handleImageUpload = async (
         e: React.ChangeEvent<HTMLInputElement>,
         imageType: keyof typeof images
     ) => {
         const file = e.target.files?.[0];
         if (file) {
-            const base64 = await convertToBase64(file);
+            const compressedFile = await compressImage(file, 0.6);
+            const base64 = await convertToBase64(compressedFile);
             setImages((prev) => ({
                 ...prev,
-                [imageType]: file,
+                [imageType]: compressedFile,
                 [`${imageType}URL`]: base64,
             }));
-            console.log(`${imageType} base64 string: `, base64);
         }
     };
 
@@ -118,66 +136,6 @@ const NewFleetVehicle = () => {
       }
     }, [error, success]);
 
-    const onSubmitPatch = (values: z.infer<typeof VehicleSchema>) => {
-        const patchOperations = [];
-        const currentData = form.getValues(); 
-
-        Object.keys(currentData).forEach((key) => {
-            if (currentData[key] !== values[key]) {
-                patchOperations.push({
-                    op: "replace", 
-                    path: key, 
-                    value: values[key] 
-                });
-            }
-        });
-
-        startTransition(async () => {
-            setFormDisabled(true);
-
-            try {
-                const sessionToken = await getSession();
-                const token = sessionToken?.user.accessToken;
-
-                if (token && vehicleId) {
-                    const response = await axios.patch(
-                        `https://carhire.transfa.org/api/vehicles/${vehicleId}`,
-                        { operations: patchOperations },
-                        {
-                            headers: {
-                            Authorization: `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                            }
-                        }
-                    );
-                    
-                    if (response.status === 200) {
-                        setSuccess("Vehicle patched successfully!");
-                        form.reset();
-                        setImages({
-                            vehicleFrontImage: null,
-                            vehicleFrontImageURL: null,
-                            vehicleSideImage: null,
-                            vehicleSideImageURL: null,
-                            vehicleBackImage: null,
-                            vehicleBackImageURL: null,
-                            vehicleInteriorFrontImage: null,
-                            vehicleInteriorFrontImageURL: null,
-                            vehicleInteriorBackImage: null,
-                            vehicleInteriorBackImageURL: null,
-                        });
-                    } else {
-                        setError("Vehicle patch failed. Please try again.");
-                    }
-                }
-            } catch (error) {
-                handleAxiosError(error);
-            } finally {
-                setFormDisabled(false);
-            }
-        });
-    };
-
     function onSubmit(values: z.infer<typeof VehicleSchema>) {
       const validatedFields = VehicleSchema.safeParse(values);
 
@@ -198,7 +156,6 @@ const NewFleetVehicle = () => {
 
       startTransition(async () => {
         setFormDisabled(true);
-        console.log("validated data", validatedData);
 
         try {
           const sessionToken = await getSession()

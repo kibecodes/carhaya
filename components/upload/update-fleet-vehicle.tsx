@@ -197,6 +197,7 @@ const UpdateFleetVehicle = () => {
     }, [error, success]);
 
     const onSubmitUpdate = (values: z.infer<typeof UpdateVehicleSchema>) => {
+        console.log("submitting form ...")
         const validatedFields = UpdateVehicleSchema.safeParse(values);
 
         if (!validatedFields.success) {
@@ -207,11 +208,11 @@ const UpdateFleetVehicle = () => {
 
         validatedData = {
             ...validatedFields.data,
-            vehicleFrontImage: vehicleDetails?.vehicleFrontImage || images.vehicleFrontImageURL,
-            vehicleSideImage: vehicleDetails?.vehicleSideImage || images.vehicleSideImageURL,
-            vehicleBackImage: vehicleDetails?.vehicleBackImage || images.vehicleBackImageURL,
-            vehicleInteriorFrontImage: vehicleDetails?.vehicleInteriorFrontImage || images.vehicleInteriorFrontImageURL,
-            vehicleInteriorBackImage: vehicleDetails?.vehicleInteriorBackImage || images.vehicleInteriorBackImageURL,
+            vehicleFrontImage: images.vehicleFrontImageURL,
+            vehicleSideImage: images.vehicleSideImageURL,
+            vehicleBackImage: images.vehicleBackImageURL,
+            vehicleInteriorFrontImage: images.vehicleInteriorFrontImageURL,
+            vehicleInteriorBackImage: images.vehicleInteriorBackImageURL,
         };
 
         startTransition(async () => {
@@ -220,6 +221,7 @@ const UpdateFleetVehicle = () => {
             try {
                 const sessionToken = await getSession();
                 const token = sessionToken?.user.accessToken;
+                console.log("validated data", validatedData);
 
                 if (token) {
                     const response = await axios.put(`https://carhire.transfa.org/api/vehicles/${vehicleId}`, 
@@ -265,17 +267,17 @@ const UpdateFleetVehicle = () => {
         if (axios.isAxiosError(error)) {
             if (error.response) {
                 console.error("Error response from server:", error.response.data);
-                alert(`Vehicle upload failed: ${error.response.data.message}`);
+                alert(`Vehicle update failed: ${error.response.data.message}`);
             } else if (error.request) {
                 console.error("No response received:", error.request);
-                alert("Vehicle upload failed: No response from server. Please try again later.");
+                alert("Vehicle update failed: No response from server. Please try again later.");
             } else {
                 console.error("Error in setup:", error.message);
-                alert(`Vehicle upload failed: ${error.message}`);
+                alert(`Vehicle update failed: ${error.message}`);
             }
         } else {
             console.error("Unexpected error:", error);
-            alert("Vehicle upload failed: An unexpected error occurred. Please try again.");
+            alert("Vehicle update failed: An unexpected error occurred. Please try again.");
         }
     };
 

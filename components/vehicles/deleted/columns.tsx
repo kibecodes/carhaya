@@ -14,8 +14,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Vehicle } from "@/types";
 import Link from "next/link";
-import type { DeleteParams } from "./page";
-import { handleDeleteVehicle } from "./page";
+import type { DeleteParams } from "../all-vehicles/page";
+import { handleDeleteVehicle } from "../all-vehicles/page";
 import React from "react";
 import ActionsCell from "@/utils/vehicles-actions-cell";
 
@@ -32,7 +32,7 @@ const getVehicleStatus = (vehicle: Vehicle) => {
   else if (!vehicle.isVehicleActive) {
     return "Deactivated";
   }
-  return "Inactive";  // Fallback if none of the conditions match
+  return "Inactive";  
 };
 
 const deleteVehicle = async({ params }: DeleteParams) => {  
@@ -117,22 +117,22 @@ export const columns: ColumnDef<Vehicle>[] = [
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
-      const vehicle = row.original;
-      const status = getVehicleStatus(vehicle);
-      
-      return (
-        <span
-          className={`${
-            status === "Active" ? "text-green-500" : 
-            status === "Booked" ? "text-yellow-500" :
-            status === "Under Maintenance" ? "text-orange-500" : 
-            status === "Deleted" ? "text-red-500" : "text-gray-500"
-          }`}
-        >
+        const vehicle = row.original;
+        const status = getVehicleStatus(vehicle);
+
+        return (
+            <span
+                className={`${
+                    status === "Active" ? "text-green-500" : 
+                    status === "Booked" ? "text-yellow-500" :
+                    status === "Under Maintenance" ? "text-orange-500" : 
+                    status === "Deleted" ? "text-red-500" : "text-gray-500"
+                }`}
+            >
           {status}
         </span>
-      );
-    },
+        )
+    }
   },
   {
     accessorKey: "vehicleEngineCapacity",
@@ -159,6 +159,48 @@ export const columns: ColumnDef<Vehicle>[] = [
 
       return (
         <ActionsCell vehicle={vehicle}/>
+        // <div className="flex space-x-2">
+        //   <Button
+        //     className="bg-blue-500 text-white hover:bg-blue-600"
+        //     onClick={() => {
+        //     }}
+        //   >
+        //     <Link 
+        //         href={{
+        //           pathname: `/upload/fleet/${vehicle.id}`,
+        //           query: {
+        //             ownerId: vehicle.ownerUserId,
+        //             id: vehicle.id,
+        //             make: vehicle.vehicleMake,
+        //             model: vehicle.vehicleType,
+        //             year: vehicle.vehicleYearOfManufacture,
+        //             plates: vehicle.vehiclePlateNumber,
+        //             color: vehicle.vehicleColor,
+        //             body: vehicle.vehicleBodyType,
+        //             seats: vehicle.vehicleSeatsCapacity,
+        //             mileage: vehicle.vehicleMillage,
+        //             engine: vehicle.vehicleEngineCapacity,
+        //             unitCost: vehicle.unitCostPerDay,
+        //             agency: vehicle.agencyName,
+        //             front: vehicle.vehicleFrontImage,
+        //             side: vehicle.vehicleSideImage,
+        //             back: vehicle.vehicleBackImage,
+        //             interiorFront: vehicle.vehicleInteriorFrontImage,
+        //             interiorBack: vehicle.vehicleInteriorBackImage,
+        //           }
+        //         }}
+        //       >
+        //         Edit
+        //       </Link>
+        //   </Button>
+        //   <Button
+        //     variant="destructive"
+        //     className="text-white hover:bg-red-600"
+        //     onClick={() => deleteVehicle({ params: { id: vehicle.id } })}
+        //   >
+        //     Delete
+        //   </Button>
+        // </div>
       );
     },
     enableSorting: false, 

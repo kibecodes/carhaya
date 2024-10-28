@@ -35,7 +35,7 @@ import { BookingSchema } from "@/schemas";
 import axios from "axios";
 import { getSession } from "next-auth/react";
 import { BsExclamationTriangle } from "react-icons/bs";
-import { AiOutlineLoading3Quarters } from "react-icons/ai"; // Spinner icon
+import { AiOutlineLoading3Quarters } from "react-icons/ai"; 
 
 const RentCarForm = () => {
     const [error, setError] = useState<string | undefined>("");

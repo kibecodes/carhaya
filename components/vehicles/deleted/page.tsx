@@ -1,36 +1,79 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react";
-import { getColumns } from "@/components/bookings/active-bookings/columns";
+import { columns } from "./columns";
 import DataTable from "./data-table";
 import axios from "axios";
 import { getSession } from "next-auth/react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { BsExclamationTriangle } from "react-icons/bs";
-import { Booking } from "@/types";
-import { ColumnDef } from "@tanstack/react-table";
-import { formatDataArrayDates } from "@/utils";
+import type { Vehicle } from "@/types";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
-import { useRouter } from "next/navigation";
 
-const ActiveBookingsPage = () => {
+
+export interface DeleteParams {
+  params: {
+    id: number;
+  }
+}
+
+export const handleDeleteVehicle = async(id: number) => {
+  
+  try {
+    const sessionToken = await getSession();
+    const token = sessionToken?.user.accessToken;
+
+    if (token) {
+      const response = await axios.delete(`https://carhire.transfa.org/api/vehicles/${id}`,{
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+  
+      if (response.status === 200 || response.status === 204) {
+        if (response.status === 204) {
+          return { success: response.data };
+        }
+        return { success: response.data }
+      }
+      return { error: "Failed to delete vehicle" };
+    } 
+    return;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        console.error('Error response from server:', error.response.data);
+        alert(`Delete failed: ${error.response.data.message}`);
+      } else if (error.request) {
+        // Request was made but no response received
+        console.error('No response received:', error.request);
+        alert('Delete failed: No response from server. Please try again later.');
+      } else {
+        // Error setting up the request
+        console.error('Error in setup:', error.message);
+        alert(`Delete failed: ${error.message}`);
+      }
+    } else {
+      // Generic error (non-Axios)
+      console.error('Unexpected error:', error);
+      alert('Delete failed: An unexpected error occurred. Please try again.');
+    }
+  }
+};
+
+const DeletedVehiclesPage = () => {
     const [error, setError] = useState<string | undefined>("");
     const [success, setSuccess] = useState<string | undefined>("");
-    const [data, setData] = useState<Booking[]>([]);
-    const [tableColumn, setTableColumn] = useState<ColumnDef<Booking>[]>([]);
+    const [data, setData] = useState<Vehicle[]>([]);
     const [isPending, startTransition] = useTransition();
 
-    const router = useRouter();
-
-    const fetchActiveBookings = () => {
+    const fetchDeletedVehicles = () => {
         try {
             startTransition(async() => {
                 const sessionToken = await getSession();
                 const token = sessionToken?.user.accessToken;
                 if (token) {
-                    const columns = getColumns(sessionToken?.user.accessToken);
-    
-                    const response = await axios.get('https://carhire.transfa.org/api/bookings/active', 
+                    const response = await axios.get('https://carhire.transfa.org/api/vehicles/deleted', 
                         {
                             headers: {
                                 Authorization: `Bearer ${token}`,
@@ -40,30 +83,20 @@ const ActiveBookingsPage = () => {
                     );
     
                     if (response.status === 200) {  
-                        setSuccess("Bookings updated successfully!");
-                        let bookings = response.data;
-    
-                        bookings = formatDataArrayDates(bookings);
-    
-                        setData(bookings);
-                        setTableColumn(columns);
+                        setSuccess("Vehicles updated successfully!");
+                        const vehicles = response.data;
+                        setData(vehicles);
+                        return vehicles;
                     } else {
-                        setError("Bookings update failed! Try again later.")
+                        setError("Vehicles update failed! Try again later.")
                     }
                 }   
-            });
+            })
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 if (error.response) {
-                    if (error.response.status === 401) {
-                        // Redirect to login page to get a new accessToken
-                        console.error('Unauthorized (401) error. Redirecting to login.');
-                        alert('Session expired. Redirecting to login page.');
-                        router.replace('/login');
-                    } else {
-                        console.error('Error response from server:', error.response.data);
-                        alert(`Fetching failed: ${error.response.data.message}`);
-                    }
+                    console.error('Error response from server:', error.response.data);
+                    alert(`Fetching failed: ${error.response.data.message}`);
                 } else if (error.request) {
                     // Request was made but no response received
                     console.error('No response received:', error.request);
@@ -82,6 +115,10 @@ const ActiveBookingsPage = () => {
     }
 
     useEffect(() => {
+      fetchDeletedVehicles();
+    }, []);
+
+    useEffect(() => {
       if (error || success) {
         const timer = setTimeout(() => {
           setError("");
@@ -92,10 +129,6 @@ const ActiveBookingsPage = () => {
       }
     }, [error, success]);
 
-    useEffect(() => {
-        fetchActiveBookings();
-    }, []);
-
     return ( 
         <div className="container mx-auto">
             {isPending && (
@@ -105,25 +138,22 @@ const ActiveBookingsPage = () => {
             )}
             {error && (
                 <div className="fixed top-8 w-2/3 flex justify-center z-50">
-                    <Alert variant="destructive">
-                        <BsExclamationTriangle className="h-4 w-4"/>
-                        <AlertTitle>{error}</AlertTitle>
-                    </Alert>
+                <Alert variant="destructive">
+                    <BsExclamationTriangle className="h-4 w-4"/>
+                    <AlertTitle>{error}</AlertTitle>
+                </Alert>
                 </div>
             )}
             {success && (
                 <div className="fixed top-8 w-2/3 flex justify-center z-50">
-                    <Alert className="bg-green-400">
-                        <AlertTitle>{success}</AlertTitle>
-                    </Alert>
+                <Alert className="bg-green-400">
+                    <AlertTitle>{success}</AlertTitle>
+                </Alert>
                 </div>
             )}
-
-
-            <DataTable columns={tableColumn} data={data} />
+            <DataTable columns={columns} data={data} />
         </div>
     );
 }
- 
-export default ActiveBookingsPage;
 
+export default DeletedVehiclesPage;

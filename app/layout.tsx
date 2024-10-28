@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 import { ThemeProvider } from "@/components/providers/theme-providers";
 import { SessionProvider } from "next-auth/react";
@@ -32,14 +33,18 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SessionProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem={false}
-            storageKey="dashboard-themes"
-          >
-            {children}
-          </ThemeProvider>
+          <SidebarProvider>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="light"
+                enableSystem={false}
+                storageKey="dashboard-themes"
+              >
+                <main>
+                  {children}
+                </main>
+              </ThemeProvider>
+          </SidebarProvider>
         </SessionProvider>
       </body>
     </html>

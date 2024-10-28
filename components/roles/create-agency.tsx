@@ -26,7 +26,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { RegisterSchema } from "@/schemas";
-import { register } from "@/actions/register";
 
 const CreateAgencyPage = () => {
     const [error, setError] = useState<string | undefined>("");
@@ -51,7 +50,6 @@ const CreateAgencyPage = () => {
             }, 2000); 
 
             return () => clearTimeout(timer); 
-            // Clear timeout if the component unmounts or if the state changes
         }
     }, [error, success]);
 
@@ -59,14 +57,14 @@ const CreateAgencyPage = () => {
         setError("")
         setSuccess("")
 
+        const validatedFields = RegisterSchema.safeParse(values);
+
+        if (!validatedFields) {
+            return { error: "Invalid fields!" };
+        }
+
         startTransition(() => {
-            register(values)
-            .then((data) => {
-                setError(data.error)
-                setSuccess(data.success)
-            })
-            .then(() => form.reset())
-            .catch((error: unknown) => console.log("error", error));
+            
         });
     }
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react";
-import { getColumns } from "@/components/bookings/all-bookings/columns";
+import { getColumns } from "@/components/bookings/canceled-bookings/columns";
 import DataTable from "./data-table";
 import axios from "axios";
 import { getSession } from "next-auth/react";

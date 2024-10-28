@@ -14,6 +14,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import type { Booking } from "@/types";
+import ActionsCell from "@/utils/booking-reassign-cell";
+
 
 const getBookingStatus = (booking: Booking) => {
   if (booking.isBookingCompleted) {
@@ -104,6 +106,7 @@ export const getColumns = (userRole: string | undefined): ColumnDef<Booking>[] =
         return <div className="justify-self-center">{booking.duration}</div> 
       }
     },
+
     {
       accessorKey: "status",
       header: "Status",
@@ -124,6 +127,7 @@ export const getColumns = (userRole: string | undefined): ColumnDef<Booking>[] =
         );
       },
     },
+
     {
       accessorKey: "totalCost",
       header: () => <div className="text-right">Amount Paid</div>,
@@ -136,6 +140,22 @@ export const getColumns = (userRole: string | undefined): ColumnDef<Booking>[] =
   
         return <div className="text-right font-medium">{formatted}</div>
       }
+    },
+
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const booking = row.original;
+        
+        return (
+          <>
+            <ActionsCell booking={booking} />
+          </>
+        );
+      },
+      enableSorting: false, 
+      enableHiding: false, 
     },
     {
       id: "actions",

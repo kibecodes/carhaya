@@ -129,8 +129,8 @@ const ActionsCell: React.FC<ActionsCellProps> = ({ booking }) => {
             <Popover open={isPopoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button
-                  className="text-white bg-orange-500 hover:bg-orange-600"
-                  onClick={() => setPopoverOpen(true)}
+                    variant="secondary"
+                    onClick={() => setPopoverOpen(true)}
                 >
                   Re-assign New Vehicle
                 </Button>
@@ -176,7 +176,7 @@ const ActionsCell: React.FC<ActionsCellProps> = ({ booking }) => {
                                 />
                                  <div className="w-full justify-between flex mt-4">
                                     <Button
-                                        variant="destructive"
+                                        variant="default"
                                         type="submit"
                                     >
                                         Re-assign

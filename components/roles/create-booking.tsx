@@ -1,162 +1,160 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import React, { useTransition, useState, useEffect } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
-import { Alert, AlertTitle } from "@/components/ui/alert";
-import { Input } from "@/components/ui/input";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { format, differenceInCalendarDays } from "date-fns";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { BookingSchema } from "@/schemas"; 
-import axios from "axios";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerClose,
+} from "@/components/ui/drawer";
+import Image from "next/image";
+import { Button } from "@/components/ui/button"; 
+import { DatePickerWithRange } from "@/utils/date-range-picker";
 import { getSession } from "next-auth/react";
+import axios from "axios";
+import type { Vehicle } from "@/types";
+import { AiOutlineLoading3Quarters } from "react-icons/ai";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { BsExclamationTriangle } from "react-icons/bs";
-import { AiOutlineLoading3Quarters } from "react-icons/ai"; 
+import dayjs from "dayjs";
 
-const RentCarForm = () => {
-    const [error, setError] = useState<string | undefined>("");
-    const [success, setSuccess] = useState<string | undefined>("");
-    const [isFormDisabled, setFormDisabled] = useState<boolean>(false);
-    const [isPending, startTransition] = useTransition();
+const BookingCards = () => {
+  const [success, setSuccess] = useState<string | undefined>("");
+  const [error, setError] = useState<string | undefined>("");
+  const [isPending, startTransition] = useTransition();
+  const [data, setData] = useState<Vehicle[]>([]);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle>();
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
 
-    const form = useForm<z.infer<typeof BookingSchema>>({
-      resolver: zodResolver(BookingSchema),
-      defaultValues: {
-        startDate: undefined,
-        endDate: undefined,
-        vehiclePlateNumber: "",
-        unitCostPerDay: undefined,
-        totalCost: undefined,
-        agencyName: "",
-      },
-    });
-
-    const calculateTotalCost = () => {
-    const { startDate, endDate, unitCostPerDay } = form.getValues();
-
-    if (startDate && endDate && unitCostPerDay) {
-      const numberOfDays = differenceInCalendarDays(new Date(endDate), new Date(startDate));
-
-      if (numberOfDays >= 0) {
-        const totalCost = numberOfDays * unitCostPerDay;
-        form.setValue("totalCost", totalCost); 
+  const handleAxiosError = (error: unknown) => {
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        console.error('Error response from server:', error.response.data);
+        alert(`Fetching failed: ${error.response.data.message}`);
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+        alert('Fetching failed: No response from server. Please try again later.');
       } else {
-        form.setValue("totalCost", 0); 
+        console.error('Error in setup:', error.message);
+        alert(`Fetching failed: ${error.message}`);
       }
     } else {
-      form.setValue("totalCost", 0);
+      console.error('Unexpected error:', error);
+      alert('Fetching failed: An unexpected error occurred. Please try again.');
     }
   };
 
-    useEffect(() => {
-      calculateTotalCost();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [form.watch("startDate"), form.watch("endDate"), form.watch("unitCostPerDay")]);
+  useEffect(() => {
+    const fetchActiveVehicles = async () => {
+      try {
+        const sessionToken = await getSession();
+        const token = sessionToken?.user.accessToken;
+        if (token) {
+          const response = await axios.get('https://carhire.transfa.org/api/vehicles/active', {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+          });
 
-    useEffect(() => {
-      if (error || success) {
-        const timer = setTimeout(() => {
-          setError("");
-          setSuccess("");
-        }, 2000); 
-
-        return () => clearTimeout(timer); 
-      }
-    }, [error, success]);
-
-    function onSubmit(values: z.infer<typeof BookingSchema>) {
-      const validatedFields = BookingSchema.safeParse(values);
-
-      if (!validatedFields) {
-        return { error: "Invalid Fields!" }
-      }
-
-      startTransition(async () => {
-        setFormDisabled(true);
-
-        try {
-          const sessionToken = await getSession()
-          const token = sessionToken?.user.accessToken;
-  
-          if (token){
-            const response = await axios.post(`https://carhire.transfa.org/api/bookings/create`, 
-              validatedFields.data,
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                },
-              }
-            );
-  
-            if (response.status === 201) {
-              setSuccess("Booking successfully created!");
-              form.reset();
-            } else {
-              setError("Booking failed. Please try again.");
-            }  
-          }
-        } catch (error) {
-          if (axios.isAxiosError(error)) {
-            if (error.response) {
-              console.error('Error response from server:', error.response.data);
-              alert(`Booking failed: ${error.response.data.message}`);
-            } else if (error.request) {
-              // Request was made but no response received
-              console.error('No response received:', error.request);
-              alert('Booking failed: No response from server. Please try again later.');
-            } else {
-              // Error setting up the request
-              console.error('Error in setup:', error.message);
-              alert(`Booking failed: ${error.message}`);
-            }
+          if (response.status === 200) {
+            setSuccess("Vehicles updated successfully!");
+            const vehicles = response.data;
+            setData(vehicles);
           } else {
-            // Generic error (non-Axios)
-            console.error('Unexpected error:', error);
-            alert('Booking failed: An unexpected error occurred. Please try again.');
+            setError("Vehicles update failed! Try again later.");
           }
-        } finally {
-          setFormDisabled(false);
         }
-      });
+        return;
+      } catch (error) {
+        handleAxiosError(error);
+      }
+    };
+
+    fetchActiveVehicles();
+  }, []);
+
+  const calculateTotalCost = () => {
+    if (!startDate || !endDate || !selectedVehicle) return 0;
+    const days = dayjs(endDate).diff(dayjs(startDate), 'day') + 1;
+    return days * selectedVehicle.unitCostPerDay;
+  };
+
+  const handleBooking = async () => {
+    if (!startDate || !endDate || !selectedVehicle) {
+      setError("Please select a date range and vehicle.");
+      return;
     }
 
-    const handleClear = () => {
-      form.reset();
+    try {
+      const sessionToken = await getSession();
+      const token = sessionToken?.user.accessToken;
+
+      if (token) {
+        const bookingData = {
+          startDate,
+          endDate,
+          vehiclePlateNumber: selectedVehicle.vehiclePlateNumber,
+          unitCostPerDay: selectedVehicle.unitCostPerDay,
+          totalCost: calculateTotalCost(),
+          agencyName: selectedVehicle.agencyName,
+        };
+        console.log("booking data", bookingData);
+
+        const response = await axios.post('https://carhire.transfa.org/api/bookings/create', bookingData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+        });
+
+        if (response.status === 201) {
+          setSuccess("Booking successful!");
+          setSelectedVehicle(undefined);
+        } else {
+          setError("Booking failed. Please try again.");
+        }
+      }
+      return;
+    } catch (error) {
+      handleAxiosError(error);
     }
+  };
+
+  useEffect(() => {
+    if (error || success) {
+      const timer = setTimeout(() => {
+        setError("");
+        setSuccess("");
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [error, success]);
 
   return (
-    <div className="pt-5">
+    <div className="grid grid-cols-2 gap-10 p-5">
       {isPending && (
         <div className="absolute inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <AiOutlineLoading3Quarters className="animate-spin text-white text-4xl" />
         </div>
       )}
-
       {error && (
         <div className="fixed top-8 w-2/3 flex justify-center z-50">
           <Alert variant="destructive">
@@ -172,198 +170,96 @@ const RentCarForm = () => {
           </Alert>
         </div>
       )}
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Apply for a Rental Car</CardTitle>
-          <CardDescription>Fill in the required details.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-              <div className="grid grid-cols-2 gap-5">
-                <FormField
-                  control={form.control}
-                  name="startDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Start Date</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-[240px] pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                              disabled={isFormDisabled}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
+
+      {data.map((vehicle) => (
+        <div key={vehicle.id} className="cursor-pointer">
+          <Card 
+            className="transition-transform duration-200 shadow-lg hover:bg-pink-500" 
+            onClick={() => setSelectedVehicle(vehicle)}
+          >
+            <CardContent className="p-0">
+              <Image
+                src={vehicle.vehicleFrontImage}
+                alt={`${vehicle.vehicleMake} ${vehicle.vehicleType}`}
+                width={200}
+                height={200}
+                className="w-full h-96 object-cover rounded-lg"
+              />
+              <CardFooter className="flex justify-between items-center">
+                <span>Availability: {vehicle.isVehicleActive}</span>
+                <span>Cost: {vehicle.unitCostPerDay}</span>
+              </CardFooter>
+            </CardContent>
+          </Card>
+
+          {selectedVehicle && (
+            <Drawer direction="right" open={!!selectedVehicle} onOpenChange={() => setSelectedVehicle(vehicle)}>
+              <DrawerContent className="w-full h-screen px-10 overflow-y-auto overflow-x-hidden">
+                <DrawerHeader>
+                  <DrawerTitle>{selectedVehicle.vehicleMake} {selectedVehicle.vehicleType}</DrawerTitle>
+                  <DrawerDescription>{selectedVehicle.vehiclePlateNumber}</DrawerDescription>
+                </DrawerHeader>
+                <div className="grid grid-cols-2 gap-16">
+                  <div>
+                    <Carousel orientation="horizontal">
+                      <CarouselContent>
+                        <CarouselItem key={selectedVehicle.id}>
+                          <Image
+                            src={selectedVehicle.vehicleFrontImage}
+                            alt={`Carousel Image ${selectedVehicle.id + 1}`}
+                            width={300}
+                            height={400}
+                            className="w-full h-96 object-cover rounded-lg"
                           />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="endDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>End Date</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-[240px] pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                              disabled={isFormDisabled}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
+                        </CarouselItem>
+                        <CarouselItem key={selectedVehicle.id}>
+                          <Image
+                            src={selectedVehicle.vehicleSideImage}
+                            alt={`Carousel Image ${selectedVehicle.id + 1}`}
+                            width={300}
+                            height={400}
+                            className="w-full h-96 object-cover rounded-lg"
                           />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        </CarouselItem>
+                      </CarouselContent>
+                      <CarouselPrevious />
+                      <CarouselNext />
+                    </Carousel>
+                  </div>
 
-                <FormField
-                  control={form.control}
-                  name="vehiclePlateNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Vehicle Plate Number</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="ABC123" 
-                          disabled={isFormDisabled}
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="unitCostPerDay"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Unit Cost Per Day</FormLabel>
-                      <FormControl>
-                        <Input 
-                            type="number"
-                            placeholder="100" 
-                            disabled={isFormDisabled}
-                            {...field} 
-                            onChange={(e) => {
-                              field.onChange(e.target.valueAsNumber)
-                              calculateTotalCost();
-                            }}
-                          />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="totalCost"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Total Cost</FormLabel>
-                      <FormControl>
-                        <Input 
-                            {...field} 
-                            value={field.value ? field.value.toString() : ""}
-                            placeholder="Total Cost" 
-                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                          />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="agencyName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Agency Name</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Agency Name" 
-                          {...field} 
-                          disabled={isFormDisabled}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <Button 
-                type="submit" 
-                variant="default" 
-                className="mt-4"
-                disabled={isFormDisabled || isPending}
-              >
-                Submit
-              </Button>
-
-            </form>
-            <div className="flex w-full justify-end">
-              <Button 
-                onClick={handleClear}
-                variant="destructive"
-                className="mt-0"
-              >Cancel
-              </Button>
-            </div>
-          </Form>
-        </CardContent>
-      </Card>
+                  <div>
+                    <p className="text-gray-600 mb-4">Detailed description of the vehicle, including specifications, features, and terms.</p>
+                    <ul className="space-y-2">
+                      <li><strong>Availability:</strong> {selectedVehicle.isVehicleActive}</li>
+                      <li><strong>Unit Cost Per Day:</strong> {selectedVehicle.unitCostPerDay}</li>
+                      <li><strong>Total Cost:</strong> {}</li>
+                      <li><strong>Specifications:</strong> Compact, 5-seater, SUV</li>
+                      <li><strong>Features:</strong> GPS, air conditioning, USB charging ports</li>
+                    </ul>
+                    <div className="my-2">
+                      <DatePickerWithRange 
+                        className="mb-4"
+                        onDateChange={(range) => {
+                          if (range?.from) setStartDate(range.from);
+                          if (range?.to) setEndDate(range.to);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <DrawerFooter className="flex justify-center gap-2">
+                  <Button onClick={handleBooking} className="bg-pink-500">
+                    Book Now
+                  </Button>
+                  <DrawerClose>Cancel</DrawerClose>
+                </DrawerFooter>
+              </DrawerContent>
+            </Drawer>
+          )}
+        </div>
+      ))}
     </div>
   );
 };
 
-export default RentCarForm;
+export default BookingCards;

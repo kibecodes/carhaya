@@ -150,7 +150,7 @@ const actionStuff: MenuItem[] = [
             },
             {
                 title: "Create Booking",
-                url: "/book-car",
+                url: "/booking-vehicle",
                 icon: BookPlus,
             },
             {

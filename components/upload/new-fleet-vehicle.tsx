@@ -37,6 +37,7 @@ const NewFleetVehicle = () => {
     const [error, setError] = useState<string | undefined>("");
     const [success, setSuccess] = useState<string | undefined>("");
     const [isFormDisabled, setFormDisabled] = useState<boolean>(false);
+
     const [isPending, startTransition] = useTransition();
 
     const [images, setImages] = useState({
@@ -83,38 +84,84 @@ const NewFleetVehicle = () => {
         });
     };
 
-    const compressImage = (file: File, quality = 0.7): Promise<File> => {
+    const compressImage = (file: File, quality = 0.7, maxSize = 400 * 1024): Promise<File> => {
         return new Promise((resolve, reject) => {
-            new Compressor(file, {
-                quality: quality,
-                success(result: Blob) {
-                    const compressedFile = new File([result], file.name, {
-                        type: file.type,
-                        lastModified: Date.now(),
-                    });
-                    resolve(compressedFile);
-                },
-                error(err) {
-                    reject(err);
-                },
-            });
+            const compress = (currentQuality: number) => {
+                new Compressor(file, {
+                    quality: currentQuality,
+                    success(result: Blob) {
+                        const compressedFile = new File([result], file.name, {
+                            type: file.type,
+                            lastModified: Date.now(),
+                        });
+
+                        // Check if the file size is under the max size (400 KB)
+                        if (compressedFile.size <= maxSize || currentQuality <= 0.1) {
+                            resolve(compressedFile);
+                        } else {
+                            // If the file is still too large, recursively try again with reduced quality
+                            compress(currentQuality - 0.1);
+                        }
+                    },
+                    error(err) {
+                        reject(err);
+                    },
+                });
+            };
+
+            // Start compression with the initial quality
+            compress(quality);
         });
     };
 
-    const handleImageUpload = async (
+
+    const handleImageUpload = (
         e: React.ChangeEvent<HTMLInputElement>,
         imageType: keyof typeof images
     ) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const compressedFile = await compressImage(file, 0.6);
-            const base64 = await convertToBase64(compressedFile);
-            setImages((prev) => ({
-                ...prev,
-                [imageType]: compressedFile,
-                [`${imageType}URL`]: base64,
-            }));
-        }
+        setFormDisabled(true);
+        startTransition(async() => {
+            const file = e.target.files?.[0];
+            if (file) {
+                const compressedFile = await compressImage(file, 0.6);
+                const base64 = await convertToBase64(compressedFile);
+    
+                const formData = new FormData();
+                formData.append("image", base64);
+    
+                try {
+                    const response = await axios.post("https://bucket.transfa.org/files/single_image.php", formData, {
+                        headers: {
+                            "Content-Type": "multipart/form-data",
+                        },
+                    });
+    
+                    if (response.status === 200 || response.status === 201) {
+                        const imageUrl = response.data.url;
+                        setImages((prev) => ({
+                            ...prev,
+                            [imageType]: compressedFile,
+                            [`${imageType}URL`]: imageUrl,
+                        }));
+    
+                    } else {
+                        console.log("Unexpected response:", response);
+                        setError("Failed to upload image. Please try again.");
+                    }
+                } catch (error) {
+                    console.error("Image upload failed:", error);
+                    if (axios.isAxiosError(error)) {
+                        console.error("Error details:", error.response?.data);
+                        setError("Failed to upload image. Please try again.");
+                    } else {
+                        setError("An unexpected error occurred. Please try again.");
+                    }
+                } finally {
+                    setFormDisabled(false);
+                }
+            }
+            return;
+        });
     };
 
     const removeImage = (imageType: keyof typeof images) => {
@@ -241,7 +288,6 @@ const NewFleetVehicle = () => {
                     <AiOutlineLoading3Quarters className="animate-spin text-white text-4xl" />
                 </div>
             )}
-
             {error && (
                 <div className="fixed top-8 w-2/3 flex justify-center z-50">
                     <Alert variant="destructive">
@@ -474,6 +520,7 @@ const NewFleetVehicle = () => {
                                                             className="hidden"
                                                             name={field.name}
                                                             ref={field.ref}
+                                                            disabled={isFormDisabled}
                                                         />
                                                     </div>
                                                 </FormControl>
@@ -524,7 +571,7 @@ const NewFleetVehicle = () => {
                                                             className="hidden"
                                                             name={field.name}
                                                             ref={field.ref}
-
+                                                            disabled={isFormDisabled}
                                                         />
                                                     </div>
                                                 </FormControl>
@@ -569,6 +616,7 @@ const NewFleetVehicle = () => {
                                                             className="hidden"
                                                             name={field.name}
                                                             ref={field.ref}
+                                                            disabled={isFormDisabled}
                                                         />
                                                     </div>
                                                 </FormControl>
@@ -613,6 +661,7 @@ const NewFleetVehicle = () => {
                                                             className="hidden"
                                                             name={field.name}
                                                             ref={field.ref}
+                                                            disabled={isFormDisabled}
                                                         />
                                                     </div>
                                                 </FormControl>
@@ -664,6 +713,7 @@ const NewFleetVehicle = () => {
                                                                 className="hidden"
                                                                 name={field.name}
                                                                 ref={field.ref}
+                                                                disabled={isFormDisabled}
                                                             />
                                                         </div>
                                                     </FormControl>

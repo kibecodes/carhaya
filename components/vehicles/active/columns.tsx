@@ -14,8 +14,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Vehicle } from "@/types";
 import Link from "next/link";
-import type { DeleteParams } from "../all-vehicles/page";
-import { handleDeleteVehicle } from "../all-vehicles/page";
 import React from "react";
 import ActionsCell from "@/utils/vehicles-actions-cell";
 
@@ -28,28 +26,11 @@ const getVehicleStatus = (vehicle: Vehicle) => {
     return "Booked";
   } else if (vehicle.isVehicleActive) {
     return "Active";
-  }
-  else if (!vehicle.isVehicleActive) {
+  } else if (!vehicle.isVehicleActive) {
     return "Deactivated";
   }
   return "Inactive";  
 };
-
-const deleteVehicle = async({ params }: DeleteParams) => {  
-  try {
-    const res = await handleDeleteVehicle(params.id);
-    if (res?.success) {
-      alert("Vehicle deleted successfully!");
-      return { success: res.success };
-    } else {
-      alert(res?.error || "Delete failed!");
-      return { error: "Delete failed!" };
-    }
-  } catch (error) {
-    console.log("Error:", error);
-    alert("An error occurred while deleting the vehicle.");
-  }
-}
 
 export const columns: ColumnDef<Vehicle>[] = [
   {
@@ -159,48 +140,6 @@ export const columns: ColumnDef<Vehicle>[] = [
 
       return (
         <ActionsCell vehicle={vehicle}/>
-        // <div className="flex space-x-2">
-        //   <Button
-        //     className="bg-blue-500 text-white hover:bg-blue-600"
-        //     onClick={() => {
-        //     }}
-        //   >
-        //     <Link 
-        //         href={{
-        //           pathname: `/upload/fleet/${vehicle.id}`,
-        //           query: {
-        //             ownerId: vehicle.ownerUserId,
-        //             id: vehicle.id,
-        //             make: vehicle.vehicleMake,
-        //             model: vehicle.vehicleType,
-        //             year: vehicle.vehicleYearOfManufacture,
-        //             plates: vehicle.vehiclePlateNumber,
-        //             color: vehicle.vehicleColor,
-        //             body: vehicle.vehicleBodyType,
-        //             seats: vehicle.vehicleSeatsCapacity,
-        //             mileage: vehicle.vehicleMillage,
-        //             engine: vehicle.vehicleEngineCapacity,
-        //             unitCost: vehicle.unitCostPerDay,
-        //             agency: vehicle.agencyName,
-        //             front: vehicle.vehicleFrontImage,
-        //             side: vehicle.vehicleSideImage,
-        //             back: vehicle.vehicleBackImage,
-        //             interiorFront: vehicle.vehicleInteriorFrontImage,
-        //             interiorBack: vehicle.vehicleInteriorBackImage,
-        //           }
-        //         }}
-        //       >
-        //         Edit
-        //       </Link>
-        //   </Button>
-        //   <Button
-        //     variant="destructive"
-        //     className="text-white hover:bg-red-600"
-        //     onClick={() => deleteVehicle({ params: { id: vehicle.id } })}
-        //   >
-        //     Delete
-        //   </Button>
-        // </div>
       );
     },
     enableSorting: false, 

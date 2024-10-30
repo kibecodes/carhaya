@@ -28,7 +28,7 @@ const ActiveBookingsPage = () => {
                 const sessionToken = await getSession();
                 const token = sessionToken?.user.accessToken;
                 if (token) {
-                    const columns = getColumns(sessionToken?.user.accessToken);
+                    const columns = getColumns(sessionToken?.user.role);
     
                     const response = await axios.get('https://carhire.transfa.org/api/bookings/active', 
                         {

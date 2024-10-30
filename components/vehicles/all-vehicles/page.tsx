@@ -10,6 +10,10 @@ import { BsExclamationTriangle } from "react-icons/bs";
 import type { Vehicle } from "@/types";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 
+type DeleteResponse = {
+  success: string;
+  error?: string;
+}
 
 export interface DeleteParams {
   params: {
@@ -17,28 +21,30 @@ export interface DeleteParams {
   }
 }
 
-export const handleDeleteVehicle = async(id: number) => {
+export const handleDeleteVehicle = async(id: number): Promise<DeleteResponse> => {
   
   try {
     const sessionToken = await getSession();
     const token = sessionToken?.user.accessToken;
 
-    if (token) {
-      const response = await axios.delete(`https://carhire.transfa.org/api/vehicles/${id}`,{
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-  
-      if (response.status === 200 || response.status === 204) {
-        if (response.status === 204) {
-          return { success: response.data };
-        }
-        return { success: response.data }
+    if (!token) {
+      return { error: "Authorization token missing", success: "" }; 
+    }
+
+    const response = await axios.delete(`https://carhire.transfa.org/api/vehicles/${id}`,{
+      headers: {
+        Authorization: `Bearer ${token}`
       }
-      return { error: "Failed to delete vehicle" };
-    } 
-    return;
+    });
+
+    if (response.status === 200 || response.status === 204) {
+      if (response.status === 204) {
+        return { success: response.data };
+      }
+      return { success: response.data }
+    }
+    return { error: "Failed to delete vehicle", success: "" };
+    
   } catch (error) {
     if (axios.isAxiosError(error)) {
       if (error.response) {
@@ -59,6 +65,8 @@ export const handleDeleteVehicle = async(id: number) => {
       alert('Delete failed: An unexpected error occurred. Please try again.');
     }
   }
+
+  return { success: "", error: "" }
 };
 
 const VehiclesPage = () => {

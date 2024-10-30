@@ -12,6 +12,134 @@ import { ColumnDef } from "@tanstack/react-table";
 import { formatDataArrayDates } from "@/utils";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 
+type ActionResponse = {
+  success: string;
+  error?: string;
+}
+
+export const handleCompleteBooking = async (id: number): Promise<ActionResponse> => {
+  try {
+    const sessionToken = await getSession();
+    const token = sessionToken?.user.accessToken;
+
+    if (!token) {
+      return { error: "Authorization token missing", success: "" }; 
+    }
+
+    const response = await axios.post(`https://carhire.transfa.org/api/bookings/complete?id=${id}`,{
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    if (response.status === 200) {
+      return { success: response.data }
+    }
+    return { error: "Failed to complete booking", success: "" };
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        console.error('Error response from server:', error.response.data);
+        alert(`Completing Booking failed: ${error.response.data.message}`);
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+        alert('Completing Booking failed: No response from server. Please try again later.');
+      } else {
+        console.error('Error in setup:', error.message);
+        alert(`Completing Booking failed: ${error.message}`);
+      }
+    } else {
+      console.error('Unexpected error:', error);
+      alert('Completing Booking failed: An unexpected error occurred. Please try again.');
+    } 
+  }
+
+  return { error: "", success: "" }
+}
+
+export const handleCancelBooking = async (id: number): Promise<ActionResponse> => {
+  try {
+    const sessionToken = await getSession();
+    const token = sessionToken?.user.accessToken;
+
+    if (!token) {
+      return { error: "Authorization token missing", success: "" }; 
+    }
+
+    const response = await axios.post(`https://carhire.transfa.org/api/bookings/cancel?id=${id}`,{
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    if (response.status === 200) {
+      return { success: response.data }
+    }
+    return { error: "Failed to cancel booking", success: "" };
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        console.error('Error response from server:', error.response.data);
+        alert(`Cancel failed: ${error.response.data.message}`);
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+        alert('Cancel failed: No response from server. Please try again later.');
+      } else {
+        console.error('Error in setup:', error.message);
+        alert(`Cancel failed: ${error.message}`);
+      }
+    } else {
+      console.error('Unexpected error:', error);
+      alert('Cancel failed: An unexpected error occurred. Please try again.');
+    }
+  }
+  return { error: "", success: "" }
+}
+
+export const handleDeleteBooking = async(id: number): Promise<ActionResponse> => {
+  
+  try {
+    const sessionToken = await getSession();
+    const token = sessionToken?.user.accessToken;
+
+    if (!token) {
+      return { error: "Authorization token missing", success: "" }; 
+    }
+
+    const response = await axios.delete(`https://carhire.transfa.org/api/bookings/${id}`,{
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    if (response.status === 200 || response.status === 204) {
+      if (response.status === 204) {
+        return { success: response.data };
+      }
+      return { success: response.data }
+    }
+    return { error: "Failed to delete booking", success: "" };
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        console.error('Error response from server:', error.response.data);
+        alert(`Delete failed: ${error.response.data.message}`);
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+        alert('Delete failed: No response from server. Please try again later.');
+      } else {
+        console.error('Error in setup:', error.message);
+        alert(`Delete failed: ${error.message}`);
+      }
+    } else {
+      console.error('Unexpected error:', error);
+      alert('Delete failed: An unexpected error occurred. Please try again.');
+    }
+  }
+
+  return { error: "", success: "" }
+};
+
 const BookingsPage = () => {
     const [error, setError] = useState<string | undefined>("");
     const [success, setSuccess] = useState<string | undefined>("");
@@ -25,7 +153,7 @@ const BookingsPage = () => {
                 const sessionToken = await getSession();
                 const token = sessionToken?.user.accessToken;
                 if (token) {
-                    const columns = getColumns(sessionToken?.user.accessToken);
+                    const columns = getColumns(sessionToken?.user.role);
     
                     const response = await axios.get('https://carhire.transfa.org/api/bookings/getall', 
                         {

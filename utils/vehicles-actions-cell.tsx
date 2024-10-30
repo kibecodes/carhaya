@@ -10,7 +10,7 @@ interface ActionsCellProps {
 }
 
 const ActionsCell: React.FC<ActionsCellProps> = ({ vehicle }) => {
-  const { deleteVehicle, isDeleting } = useRefreshAfterDelete();
+  const { deleteById, isDeleting } = useRefreshAfterDelete();
 
   return (
     <div className="flex space-x-2">
@@ -31,7 +31,7 @@ const ActionsCell: React.FC<ActionsCellProps> = ({ vehicle }) => {
       <Button
         variant="destructive"
         className="text-white hover:bg-red-600"
-        onClick={() => deleteVehicle(vehicle.id, handleDeleteVehicle)}
+        onClick={() => deleteById(vehicle.id, handleDeleteVehicle, "Booking")}
         disabled={isDeleting} 
       >
         {isDeleting ? "Deleting..." : "Delete"}

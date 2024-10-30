@@ -50,7 +50,7 @@ export const getColumns = (userRole: string | undefined): ColumnDef<Booking>[] =
       enableSorting: false,
       enableHiding: false,
     },
-    ...(userRole === "admin" 
+    ...(userRole === "Admin" 
       ? [
           {
             accessorKey: "agencyName",
@@ -58,10 +58,6 @@ export const getColumns = (userRole: string | undefined): ColumnDef<Booking>[] =
           },
         ]
       : []), 
-    {
-      accessorKey: "agencyName",
-      header: "Agency"
-    },
     {
       accessorKey: "vehiclePlateNumber",
       header: "Plate No.",

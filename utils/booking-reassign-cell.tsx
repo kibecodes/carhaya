@@ -32,7 +32,7 @@ const schema = z.object({
     newPlates: z.string().min(1, { message: 'Enter new number plates' }),
 })
 
-const ActionsCell: React.FC<ActionsCellProps> = ({ booking }) => {
+const ReassignVehicleActionCell: React.FC<ActionsCellProps> = ({ booking }) => {
     const [isPopoverOpen, setPopoverOpen] = useState(false);
     const [error, setError] = useState<string>("");
     const [success, setSuccess] = useState<string>("");
@@ -198,4 +198,4 @@ const ActionsCell: React.FC<ActionsCellProps> = ({ booking }) => {
     );
 }
  
-export default ActionsCell;
+export default ReassignVehicleActionCell;

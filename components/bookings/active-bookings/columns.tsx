@@ -1,6 +1,6 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
+import { CellContext, ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,8 +14,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import type { Booking } from "@/types";
-import ActionsCell from "@/utils/booking-reassign-cell";
-
+import ReassignVehicleActionCell from "@/utils/booking-reassign-cell";
+import BookingActionCell from "@/utils/bookings-actions-cell";
 
 const getBookingStatus = (booking: Booking) => {
   if (booking.isBookingCompleted) {
@@ -52,7 +52,7 @@ export const getColumns = (userRole: string | undefined): ColumnDef<Booking>[] =
       enableSorting: false,
       enableHiding: false,
     },
-    ...(userRole === "admin" 
+    ...(userRole === "Admin" 
       ? [
           {
             accessorKey: "agencyName",
@@ -60,10 +60,6 @@ export const getColumns = (userRole: string | undefined): ColumnDef<Booking>[] =
           },
         ]
       : []), 
-    {
-      accessorKey: "agencyName",
-      header: "Agency"
-    },
     {
       accessorKey: "vehiclePlateNumber",
       header: "Plate No.",
@@ -141,22 +137,27 @@ export const getColumns = (userRole: string | undefined): ColumnDef<Booking>[] =
         return <div className="text-right font-medium">{formatted}</div>
       }
     },
+    ...(userRole === "Admin" 
+      ? [
+          {
+            id: "actions",
+            header: "Actions",
+            cell: ({ row }: CellContext<Booking, unknown>) => {
+              const booking = row.original;
+              
+              return (
+                <div className="flex flex-row gap-2">
+                  <ReassignVehicleActionCell booking={booking} />
+                  <BookingActionCell booking={booking}/>
+                </div>
+              );
+            },
+            enableSorting: false, 
+            enableHiding: false, 
+          },
+        ]
+      : []), 
 
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => {
-        const booking = row.original;
-        
-        return (
-          <>
-            <ActionsCell booking={booking} />
-          </>
-        );
-      },
-      enableSorting: false, 
-      enableHiding: false, 
-    },
     {
       id: "actions",
       cell: ({ row }) => {

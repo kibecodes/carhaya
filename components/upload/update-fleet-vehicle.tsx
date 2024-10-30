@@ -37,10 +37,10 @@ import type { Vehicle } from "@/types";
 import Compressor from "compressorjs";
 
 const UpdateFleetVehicle = () => {
+    const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
     const [success, setSuccess] = useState<string | undefined>("");
     const [isFormDisabled, setFormDisabled] = useState<boolean>(false);
-    const [isPending, startTransition] = useTransition();
     const [vehicleDetails, setVehicleDetails] = useState<Vehicle>();
 
     const router = useRouter();
@@ -49,8 +49,8 @@ const UpdateFleetVehicle = () => {
     const vehicleId = Number(id);
 
     const [images, setImages] = useState({
-        vehicleFrontImage: null as File | null,
         vehicleFrontImageURL: null as string | null,
+        vehicleFrontImage: null as File | null,
         vehicleSideImage: null as File | null,
         vehicleSideImageURL: null as string | null,
         vehicleBackImage: null as File | null,
@@ -64,6 +64,7 @@ const UpdateFleetVehicle = () => {
     const form = useForm<z.infer<typeof UpdateVehicleSchema>>({
         resolver: zodResolver(UpdateVehicleSchema),
         defaultValues: vehicleDetails ? {
+            id: vehicleDetails.id,
             vehicleType: vehicleDetails.vehicleType,
             vehiclePlateNumber: vehicleDetails.vehiclePlateNumber,
             vehicleMake: vehicleDetails.vehicleMake,
@@ -81,6 +82,12 @@ const UpdateFleetVehicle = () => {
             unitCostPerDay: Number(vehicleDetails.unitCostPerDay),
             agencyName: vehicleDetails.agencyName,
             ownerUserId: vehicleDetails.ownerUserId,
+            isVehicleActive: vehicleDetails.isVehicleActive,
+            isVehicleBooked: vehicleDetails.isVehicleBooked,
+            isVehicleDeleted: vehicleDetails.isVehicleDeleted,
+            isVehicleUnderMaintenance: vehicleDetails.isVehicleUnderMaintenance,
+            createdAt: vehicleDetails.createdAt,
+            updatedAt: vehicleDetails.updatedAt,
         } : {},
     });
     
@@ -93,38 +100,80 @@ const UpdateFleetVehicle = () => {
         });
     };
 
-    const compressImage = (file: File, quality = 0.7): Promise<File> => {
+    const compressImage = (file: File, quality = 0.7, maxSize = 400 * 1024): Promise<File> => {
         return new Promise((resolve, reject) => {
-            new Compressor(file, {
-                quality: quality,
-                success(result: Blob) {
-                    const compressedFile = new File([result], file.name, {
-                        type: file.type,
-                        lastModified: Date.now(),
-                    });
-                    resolve(compressedFile);
-                },
-                error(err) {
-                    reject(err);
-                },
-            });
+            const compress = (currentQuality: number) => {
+                new Compressor(file, {
+                    quality: currentQuality,
+                    success(result: Blob) {
+                        const compressedFile = new File([result], file.name, {
+                            type: file.type,
+                            lastModified: Date.now(),
+                        });
+
+                        if (compressedFile.size <= maxSize || currentQuality <= 0.1) {
+                            resolve(compressedFile);
+                        } else {
+                            compress(currentQuality - 0.1);
+                        }
+                    },
+                    error(err) {
+                        reject(err);
+                    },
+                });
+            };
+
+            compress(quality);
         });
     };
 
-    const handleImageUpload = async (
+    const handleImageUpload = (
         e: React.ChangeEvent<HTMLInputElement>,
         imageType: keyof typeof images
     ) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const compressedFile = await compressImage(file, 0.6);
-            const base64 = await convertToBase64(compressedFile);
-            setImages((prev) => ({
-                ...prev,
-                [imageType]: compressedFile,
-                [`${imageType}URL`]: base64,
-            }));
-        }
+        setFormDisabled(true);
+        startTransition(async() => {
+            const file = e.target.files?.[0];
+            if (file) {
+                const compressedFile = await compressImage(file, 0.6);
+                const base64 = await convertToBase64(compressedFile);
+    
+                const formData = new FormData();
+                formData.append("image", base64);
+    
+                try {
+                    const response = await axios.post("https://bucket.transfa.org/files/single_image.php", formData, {
+                        headers: {
+                            "Content-Type": "multipart/form-data",
+                        },
+                    });
+    
+                    if (response.status === 200 || response.status === 201) {
+                        const imageUrl = response.data.url;
+                        setImages((prev) => ({
+                            ...prev,
+                            [imageType]: compressedFile,
+                            [`${imageType}URL`]: imageUrl,
+                        }));
+    
+                    } else {
+                        console.log("Unexpected response:", response);
+                        setError("Failed to upload image. Please try again.");
+                    }
+                } catch (error) {
+                    console.error("Image upload failed:", error);
+                    if (axios.isAxiosError(error)) {
+                        console.error("Error details:", error.response?.data);
+                        setError("Failed to upload image. Please try again.");
+                    } else {
+                        setError("An unexpected error occurred. Please try again.");
+                    }
+                } finally {
+                    setFormDisabled(false);
+                }
+            }
+            return;
+        });
     };
 
     const removeImage = (imageType: keyof typeof images) => {
@@ -145,6 +194,7 @@ const UpdateFleetVehicle = () => {
                 }
 
                 form.reset({
+                    id: data.id,
                     vehicleMake: data.vehicleMake,
                     vehicleType: data.vehicleType,
                     vehiclePlateNumber: data.vehiclePlateNumber,
@@ -161,11 +211,17 @@ const UpdateFleetVehicle = () => {
                     vehicleBackImage: data.vehicleBackImage,
                     vehicleInteriorFrontImage: data.vehicleInteriorFrontImage,
                     vehicleInteriorBackImage: data.vehicleInteriorBackImage,
+                    ownerUserId: data.ownerUserId,
+                    isVehicleActive: data.isVehicleActive,
+                    isVehicleBooked: data.isVehicleBooked,
+                    isVehicleDeleted: data.isVehicleDeleted,
+                    isVehicleUnderMaintenance: data.isVehicleUnderMaintenance,
+                    createdAt: data.createdAt,
+                    updatedAt: data.updatedAt,
                 });
 
-                // Set the fetched images into the images state
                 setImages({
-                    vehicleFrontImage: null, // No file yet, only URL fetched
+                    vehicleFrontImage: null, 
                     vehicleFrontImageURL: data.vehicleFrontImage || null,
                     vehicleSideImage: null,
                     vehicleSideImageURL: data.vehicleSideImage || null,
@@ -197,7 +253,6 @@ const UpdateFleetVehicle = () => {
     }, [error, success]);
 
     const onSubmitUpdate = (values: z.infer<typeof UpdateVehicleSchema>) => {
-        console.log("submitting form ...")
         const validatedFields = UpdateVehicleSchema.safeParse(values);
 
         if (!validatedFields.success) {
@@ -221,10 +276,9 @@ const UpdateFleetVehicle = () => {
             try {
                 const sessionToken = await getSession();
                 const token = sessionToken?.user.accessToken;
-                console.log("validated data", validatedData);
 
                 if (token) {
-                    const response = await axios.put(`https://carhire.transfa.org/api/vehicles/${vehicleId}`, 
+                    const response = await axios.put(`https://carhire.transfa.org/api/vehicles/${vehicleDetails?.id}`, 
                         validatedData, 
                         {
                             headers: {
@@ -234,7 +288,7 @@ const UpdateFleetVehicle = () => {
                         }
                     );
                     
-                    if (response.status === 200) {
+                    if (response.status === 200 || response.status === 204) {
                         setSuccess("Vehicle updated successfully!");
                         form.reset();
                         setImages({
@@ -249,7 +303,7 @@ const UpdateFleetVehicle = () => {
                             vehicleInteriorBackImage: null,
                             vehicleInteriorBackImageURL: null,
                         });
-                        router.refresh();
+                        router.replace('/vehicles/active-vehicles');
                     } else {
                         setError("Vehicle update failed. Please try again.");
                     }
@@ -267,17 +321,17 @@ const UpdateFleetVehicle = () => {
         if (axios.isAxiosError(error)) {
             if (error.response) {
                 console.error("Error response from server:", error.response.data);
-                alert(`Vehicle update failed: ${error.response.data.message}`);
+                setError(`Vehicle update failed: ${error.response.data.message}`);
             } else if (error.request) {
                 console.error("No response received:", error.request);
-                alert("Vehicle update failed: No response from server. Please try again later.");
+                setError("Vehicle update failed: No response from server. Please try again later.");
             } else {
                 console.error("Error in setup:", error.message);
-                alert(`Vehicle update failed: ${error.message}`);
+                setError(`Vehicle update failed: ${error.message}`);
             }
         } else {
             console.error("Unexpected error:", error);
-            alert("Vehicle update failed: An unexpected error occurred. Please try again.");
+            setError("Vehicle update failed: An unexpected error occurred. Please try again.");
         }
     };
 

@@ -78,6 +78,7 @@ export const VehicleSchema = z.object({
 });
 
 export const UpdateVehicleSchema = z.object({
+  id: z.number(),
   ownerUserId: z.string(),
   vehiclePlateNumber: z
     .string()
@@ -96,17 +97,21 @@ export const UpdateVehicleSchema = z.object({
     .min(4, { message: "Year of Manufacture is required" }),
   vehicleBodyType: z.string().min(1, { message: "Body Type is required" }),
   vehicleMillage: z.string().min(1, { message: "Mileage is required" }),
-
   vehicleFrontImage: z.any().optional(),
   vehicleSideImage: z.any().optional(),
   vehicleBackImage: z.any().optional(),
   vehicleInteriorFrontImage: z.any().optional(),
   vehicleInteriorBackImage: z.any().optional(),
-
   unitCostPerDay: z
     .number({ invalid_type_error: "Unit cost per day must be a number" })
     .positive("Unit cost per day must be positive"),
   agencyName: z.string().min(1, { message: "Agency name is required" }),
+  isVehicleActive: z.boolean(),
+  isVehicleBooked: z.boolean(),
+  isVehicleDeleted: z.boolean(),
+  isVehicleUnderMaintenance: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
 export const RenterVehicleSchema = z.object({

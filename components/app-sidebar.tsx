@@ -24,7 +24,9 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { CardDescription } from "./ui/card";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 interface SubMenuItem {
   title: string;
@@ -81,6 +83,11 @@ const vehicles: MenuItem[] = [
         icon: CarFront,
         open: false,
         submenu: [
+            {
+                title: "Booked",
+                url: "/vehicles/booked-vehicles",
+                icon: CarIcon,
+            },
             {
                 title: "Active",
                 url: "/vehicles/active-vehicles",
@@ -181,6 +188,7 @@ const settings: SubMenuItem[] = [
 ]
 
 export function AppSidebar() {
+    const {data: session} = useSession();
   const [menuState, setMenuState] = useState<MenuState>({
     bookings: bookingsData.map((item) => ({ ...item, open: false })),
     vehicles: vehicles.map((item) => ({ ...item, open: false })),
@@ -189,6 +197,8 @@ export function AppSidebar() {
 
   const [activeItem, setActiveItem] = useState<string | null>(null);
   const pathname = usePathname(); 
+  const email = session?.user.email
+  const role = session?.user.role;  
 
   const toggleOpen = (section: "bookings" | "vehicles" | "actions", index: number) => {
     setMenuState((prevState) => ({
@@ -213,11 +223,17 @@ export function AppSidebar() {
 
   return (
     <Sidebar variant="sidebar">
-      <SidebarHeader>
+      <SidebarHeader className="flex flex-row items-center justify-start">
             <Avatar className="w-8 h-8">
                 <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
                 <AvatarFallback className="text-black">BT</AvatarFallback>
             </Avatar>
+            {email && role && (
+                <div className="flex flex-col">
+                    <p className="text-sm">{email || "Guest"}</p>
+                    <CardDescription className="font-normal text-gray-500">{role || "Admin"}</CardDescription>
+                </div>
+            )}
       </SidebarHeader>
 
       <SidebarContent>

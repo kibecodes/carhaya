@@ -38,14 +38,6 @@ const LoginPage = () => {
     const [isFormDisabled, setFormDisabled] = useState<boolean>(false);
     const [isPending, startTransition] = useTransition();
 
-    const form = useForm<z.infer<typeof LoginSchema>>({
-        resolver: zodResolver(LoginSchema),
-        defaultValues: {
-            email: "",
-            password: "",
-        },
-    });
-
     useEffect(() => {
         if (error || success) {
             const timer = setTimeout(() => {
@@ -56,6 +48,14 @@ const LoginPage = () => {
             return () => clearTimeout(timer); 
         }
     }, [error, success]);
+
+    const form = useForm<z.infer<typeof LoginSchema>>({
+        resolver: zodResolver(LoginSchema),
+        defaultValues: {
+            email: "",
+            password: "",
+        },
+    });
 
     function onSubmit(values: z.infer<typeof LoginSchema>) {
         setError("")

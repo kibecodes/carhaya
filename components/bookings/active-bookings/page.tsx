@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react";
-import { getColumns } from "@/components/bookings/active-bookings/columns";
-import DataTable from "./data-table";
+import { getColumns } from "../components/columns";
+import DataTable from "../components/data-table";
 import axios from "axios";
 import { getSession } from "next-auth/react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -28,7 +28,7 @@ const ActiveBookingsPage = () => {
                 const sessionToken = await getSession();
                 const token = sessionToken?.user.accessToken;
                 if (token) {
-                    const columns = getColumns(sessionToken?.user.role);
+                    const columns = getColumns(sessionToken?.user.role, true);
     
                     const response = await axios.get('https://carhire.transfa.org/api/bookings/active', 
                         {
@@ -120,7 +120,12 @@ const ActiveBookingsPage = () => {
             )}
 
 
-            <DataTable columns={tableColumn} data={data} />
+            <DataTable 
+                columns={tableColumn} 
+                data={data} 
+                title="Active Bookings"
+                description="These are all your active bookings."
+            />
         </div>
     );
 }

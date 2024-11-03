@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react";
-import { columns } from "./columns";
-import DataTable from "./data-table";
+import { columns } from "../components/columns";
+import DataTable from "../components/data-table";
 import axios from "axios";
 import { getSession } from "next-auth/react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -15,6 +15,8 @@ const BookedVehiclesPage = () => {
     const [success, setSuccess] = useState<string | undefined>("");
     const [data, setData] = useState<Vehicle[]>([]);
     const [isPending, startTransition] = useTransition();
+
+    const bookedColumns = columns(true, "booked-vehicles");
 
     const fetchBookedVehicles = () => {
         try {
@@ -97,7 +99,12 @@ const BookedVehiclesPage = () => {
                 </Alert>
                 </div>
             )}
-            <DataTable columns={columns} data={data} />
+            <DataTable 
+                columns={bookedColumns} 
+                data={data} 
+                title="Booked Vehicles"
+                description=""
+            />
         </div>
     );
 }

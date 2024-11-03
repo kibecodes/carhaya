@@ -34,9 +34,11 @@ import { Input } from "@/components/ui/input"
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  title: string;
+  description: string;
 }
 
-function DataTable<TData, TValue> ({ columns, data }: DataTableProps<TData, TValue>) {
+function DataTable<TData, TValue> ({ columns, data, title, description }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
         []
@@ -65,15 +67,14 @@ function DataTable<TData, TValue> ({ columns, data }: DataTableProps<TData, TVal
 
     return ( 
         <div>
-            <p className="text-xl font-semibold pt-5">Vehicles Under Maintenace</p>
-            <p className="text-sm font-normal text-gray-500 pb-4">These are all your fleet and users vehicles under maintenance.</p>
-            <p className="text-sm font-normal text-gray-500 pb-0">You can filter by vehicle plate numbers.</p>
+            <p className="text-xl font-semibold pt-5">{title}</p>
+            <p className="text-sm font-normal text-gray-500 pb-4">{description}</p>
             <div className="flex items-center py-4">
                 <Input
-                    placeholder="Filter vehicles..."
-                    value={(table.getColumn("make")?.getFilterValue() as string) ?? ""}
+                    placeholder="Filter vehicle types..."
+                    value={(table.getColumn("carRented")?.getFilterValue() as string) ?? ""}
                     onChange={(event) =>
-                        table.getColumn("make")?.setFilterValue(event.target.value)
+                        table.getColumn("carRented")?.setFilterValue(event.target.value)
                     }
                     className="max-w-sm"
                 />
@@ -96,7 +97,7 @@ function DataTable<TData, TValue> ({ columns, data }: DataTableProps<TData, TVal
                                 className="capitalize"
                                 checked={column.getIsVisible()}
                                 onCheckedChange={(value) =>
-                                    column.toggleVisibility(!!value)
+                                column.toggleVisibility(!!value)
                                 }
                             >
                                 {column.id}

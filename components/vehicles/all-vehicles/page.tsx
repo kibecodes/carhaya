@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react";
-import { columns } from "./columns";
-import DataTable from "./data-table";
+import { columns } from "../components/columns";
+import DataTable from "../components/data-table";
 import axios from "axios";
 import { getSession } from "next-auth/react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -74,6 +74,8 @@ const VehiclesPage = () => {
     const [success, setSuccess] = useState<string | undefined>("");
     const [data, setData] = useState<Vehicle[]>([]);
     const [isPending, startTransition] = useTransition();
+
+    const allVehiclesColumns = columns(true, "all-vehicles");
 
     const fetchAllVehicles = () => {
         try {
@@ -159,7 +161,12 @@ const VehiclesPage = () => {
                 </Alert>
                 </div>
             )}
-            <DataTable columns={columns} data={data} />
+            <DataTable 
+              columns={allVehiclesColumns} 
+              data={data} 
+              title="All Vehicles"
+              description="These are all your active fleet vehicles including ones brought by users who want to earn from their cars being rented out."
+            />
         </div>
     );
 }

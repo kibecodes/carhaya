@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react";
-import { columns } from "./columns";
-import DataTable from "./data-table";
+import { columns } from "../components/columns";
+import DataTable from "../components/data-table";
 import axios from "axios";
 import { getSession } from "next-auth/react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -66,6 +66,8 @@ const DeletedVehiclesPage = () => {
     const [success, setSuccess] = useState<string | undefined>("");
     const [data, setData] = useState<Vehicle[]>([]);
     const [isPending, startTransition] = useTransition();
+
+    const deletedVehiclesColumns = columns(false, "deleted-vehicles");
 
     const fetchDeletedVehicles = () => {
         try {
@@ -151,7 +153,12 @@ const DeletedVehiclesPage = () => {
                 </Alert>
                 </div>
             )}
-            <DataTable columns={columns} data={data} />
+            <DataTable 
+              columns={deletedVehiclesColumns} 
+              data={data} 
+              title="Deleted Vehicles"
+              description=""
+            />
         </div>
     );
 }

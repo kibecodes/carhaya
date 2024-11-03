@@ -14,7 +14,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import type { Booking } from "@/types";
-import ReassignVehicleActionCell from "@/utils/booking-reassign-cell";
 import BookingActionCell from "@/utils/bookings-actions-cell";
 
 const getBookingStatus = (booking: Booking) => {
@@ -28,7 +27,7 @@ const getBookingStatus = (booking: Booking) => {
   return "Unknown";  
 };
 
-export const getColumns = (userRole: string | undefined): ColumnDef<Booking>[] => {
+export const getColumns = (userRole: string | undefined, showActions: boolean): ColumnDef<Booking>[] => {
   const columns: ColumnDef<Booking>[] = [
     {
       id: "select",
@@ -137,7 +136,7 @@ export const getColumns = (userRole: string | undefined): ColumnDef<Booking>[] =
         return <div className="text-right font-medium">{formatted}</div>
       }
     },
-    ...(userRole === "Admin" 
+    ...(userRole === "Admin" && showActions
       ? [
           {
             id: "actions",
@@ -146,8 +145,7 @@ export const getColumns = (userRole: string | undefined): ColumnDef<Booking>[] =
               const booking = row.original;
               
               return (
-                <div className="flex flex-row gap-2">
-                  <ReassignVehicleActionCell booking={booking} />
+                <div className="flex flex-row">
                   <BookingActionCell booking={booking}/>
                 </div>
               );

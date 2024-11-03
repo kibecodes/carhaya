@@ -1,6 +1,6 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
+import { CellContext, ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,8 +14,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Vehicle } from "@/types";
 import Link from "next/link";
-import type { DeleteParams } from "../all-vehicles/page";
-import { handleDeleteVehicle } from "../all-vehicles/page";
 import React from "react";
 import ActionsCell from "@/utils/vehicles-actions-cell";
 
@@ -28,30 +26,13 @@ const getVehicleStatus = (vehicle: Vehicle) => {
     return "Booked";
   } else if (vehicle.isVehicleActive) {
     return "Active";
-  }
-  else if (!vehicle.isVehicleActive) {
+  } else if (!vehicle.isVehicleActive) {
     return "Deactivated";
   }
   return "Inactive";  
 };
 
-const deleteVehicle = async({ params }: DeleteParams) => {  
-  try {
-    const res = await handleDeleteVehicle(params.id);
-    if (res?.success) {
-      alert("Vehicle deleted successfully!");
-      return { success: res.success };
-    } else {
-      alert(res?.error || "Delete failed!");
-      return { error: "Delete failed!" };
-    }
-  } catch (error) {
-    console.log("Error:", error);
-    alert("An error occurred while deleting the vehicle.");
-  }
-}
-
-export const columns: ColumnDef<Vehicle>[] = [
+export const columns = (showActions: boolean, basePath: string): ColumnDef<Vehicle>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -83,7 +64,7 @@ export const columns: ColumnDef<Vehicle>[] = [
         <Link 
           className="text-blue-500 hover:underline"
           href={{
-              pathname: `/vehicles/all-vehicles/status/${vehicle.id}`,
+              pathname: `/vehicles/${basePath}/status/${vehicle.id}`,
               query: {
                 id: vehicle.id,
                 make: vehicle.vehicleMake,
@@ -117,22 +98,22 @@ export const columns: ColumnDef<Vehicle>[] = [
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
-        const vehicle = row.original;
-        const status = getVehicleStatus(vehicle);
-
-        return (
-            <span
-                className={`${
-                    status === "Active" ? "text-green-500" : 
-                    status === "Booked" ? "text-yellow-500" :
-                    status === "Under Maintenance" ? "text-orange-500" : 
-                    status === "Deleted" ? "text-red-500" : "text-gray-500"
-                }`}
-            >
+      const vehicle = row.original;
+      const status = getVehicleStatus(vehicle);
+      
+      return (
+        <span
+          className={`${
+            status === "Active" ? "text-green-500" : 
+            status === "Booked" ? "text-yellow-500" :
+            status === "Under Maintenance" ? "text-orange-500" : 
+            status === "Deleted" ? "text-red-500" : "text-gray-500"
+          }`}
+        >
           {status}
         </span>
-        )
-    }
+      );
+    },
   },
   {
     accessorKey: "vehicleEngineCapacity",
@@ -151,62 +132,23 @@ export const columns: ColumnDef<Vehicle>[] = [
       return <div className="text-center font-medium">{formatted}</div>
     }
   },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => {
-      const vehicle = row.original;
+  ...(showActions
+    ? [
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }: CellContext<Vehicle, unknown>) => {
+          const vehicle = row.original;
 
-      return (
-        <ActionsCell vehicle={vehicle}/>
-        // <div className="flex space-x-2">
-        //   <Button
-        //     className="bg-blue-500 text-white hover:bg-blue-600"
-        //     onClick={() => {
-        //     }}
-        //   >
-        //     <Link 
-        //         href={{
-        //           pathname: `/upload/fleet/${vehicle.id}`,
-        //           query: {
-        //             ownerId: vehicle.ownerUserId,
-        //             id: vehicle.id,
-        //             make: vehicle.vehicleMake,
-        //             model: vehicle.vehicleType,
-        //             year: vehicle.vehicleYearOfManufacture,
-        //             plates: vehicle.vehiclePlateNumber,
-        //             color: vehicle.vehicleColor,
-        //             body: vehicle.vehicleBodyType,
-        //             seats: vehicle.vehicleSeatsCapacity,
-        //             mileage: vehicle.vehicleMillage,
-        //             engine: vehicle.vehicleEngineCapacity,
-        //             unitCost: vehicle.unitCostPerDay,
-        //             agency: vehicle.agencyName,
-        //             front: vehicle.vehicleFrontImage,
-        //             side: vehicle.vehicleSideImage,
-        //             back: vehicle.vehicleBackImage,
-        //             interiorFront: vehicle.vehicleInteriorFrontImage,
-        //             interiorBack: vehicle.vehicleInteriorBackImage,
-        //           }
-        //         }}
-        //       >
-        //         Edit
-        //       </Link>
-        //   </Button>
-        //   <Button
-        //     variant="destructive"
-        //     className="text-white hover:bg-red-600"
-        //     onClick={() => deleteVehicle({ params: { id: vehicle.id } })}
-        //   >
-        //     Delete
-        //   </Button>
-        // </div>
-      );
-    },
-    enableSorting: false, 
-    enableHiding: false, 
-  },
-
+          return (
+            <ActionsCell vehicle={vehicle}/>
+          );
+        },
+        enableSorting: false, 
+        enableHiding: false, 
+      },
+    ]
+  : []),
   {
     id: "actions",
     cell: ({ row }) => {
@@ -229,7 +171,7 @@ export const columns: ColumnDef<Vehicle>[] = [
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
-              <Link href={`all-vehicles/details/${vehicle.id}`}>
+              <Link href={`${basePath}/details/${vehicle.id}`}>
                 View vehicle details
               </Link>
             </DropdownMenuItem>

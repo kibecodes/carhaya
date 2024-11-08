@@ -13,7 +13,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-    Form,
+  Form,
   FormControl,
   FormField,
   FormItem,
@@ -33,7 +33,7 @@ interface ActionsCellProps {
 }
 
 const schema = z.object({
-    newPlates: z.string().min(1, { message: 'Enter new number plates' }),
+  newPlates: z.string().min(1, { message: 'Enter new number plates' }),
 })
 
 const BookingActionsCell: React.FC<ActionsCellProps> = ({ booking }) => {
@@ -74,7 +74,12 @@ const BookingActionsCell: React.FC<ActionsCellProps> = ({ booking }) => {
 
         if (token) {
           const response = await axios.post(
-            `https://carhire.transfa.org/api/bookings/re-assign/vehicle?id=${booking.id}&plateNumber=${newPlates}`,
+            `https://carhire.transfa.org/api/bookings/re-assign/vehicle?id=${booking.id}&plateNumber=${newPlates}`,{},
+            {
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            }
           );
           if (response.status === 200) {
             setSuccess(response.data);
@@ -200,7 +205,7 @@ const BookingActionsCell: React.FC<ActionsCellProps> = ({ booking }) => {
       </Popover>
 
       <Button
-        className="bg-blue-500 text-white hover:bg-blue-600"
+        className="bg-blue-400 hover:bg-blue-600 text-white"
         onClick={() => alert('editing booking')}
       >
         <Link

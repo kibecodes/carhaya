@@ -19,10 +19,24 @@ const ActiveBookingsPage = () => {
     const [data, setData] = useState<Booking[]>([]);
     const [tableColumn, setTableColumn] = useState<ColumnDef<Booking>[]>([]);
     const [isPending, startTransition] = useTransition();
+    const [refreshTrigger, setRefreshTrigger] = useState(false); 
 
     const router = useRouter();
 
-    const fetchActiveBookings = () => {
+    useEffect(() => {
+      if (error || success) {
+        const timer = setTimeout(() => {
+          setError("");
+          setSuccess("");
+        }, 2000); 
+
+        return () => clearTimeout(timer); 
+      }
+    }, [error, success]);
+    
+
+    useEffect(() => {
+        const fetchActiveBookings = () => {
         try {
             startTransition(async() => {
                 const sessionToken = await getSession();
@@ -81,20 +95,8 @@ const ActiveBookingsPage = () => {
         } 
     }
 
-    useEffect(() => {
-      if (error || success) {
-        const timer = setTimeout(() => {
-          setError("");
-          setSuccess("");
-        }, 2000); 
-
-        return () => clearTimeout(timer); 
-      }
-    }, [error, success]);
-
-    useEffect(() => {
         fetchActiveBookings();
-    }, []);
+    }, [refreshTrigger, router]);
 
     return ( 
         <div className="container mx-auto">
@@ -119,12 +121,12 @@ const ActiveBookingsPage = () => {
                 </div>
             )}
 
-
             <DataTable 
                 columns={tableColumn} 
                 data={data} 
                 title="Active Bookings"
                 description="These are all your active bookings."
+                triggerRefresh={() => setRefreshTrigger(!refreshTrigger)} 
             />
         </div>
     );

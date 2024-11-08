@@ -146,7 +146,7 @@ export const getColumns = (userRole: string | undefined, showActions: boolean): 
               
               return (
                 <div className="flex flex-row">
-                  <BookingActionCell booking={booking}/>
+                  <BookingActionCell booking={booking} />
                 </div>
               );
             },

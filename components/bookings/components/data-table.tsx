@@ -13,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-
+import { RefreshCw } from "lucide-react"; // Importing the refresh icon
 import {
   Table,
   TableBody,
@@ -36,9 +36,10 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
   title: string;
   description: string;
+    triggerRefresh?: (arg: boolean) => void; 
 }
 
-function DataTable<TData, TValue> ({ columns, data, title, description }: DataTableProps<TData, TValue>) {
+function DataTable<TData, TValue> ({ columns, data, title, description, triggerRefresh }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
         []
@@ -65,6 +66,12 @@ function DataTable<TData, TValue> ({ columns, data, title, description }: DataTa
         }
     });
 
+    const handleRefresh = () => {
+       if (triggerRefresh) {
+            triggerRefresh(true);
+        }; 
+    };
+
     return ( 
         <div>
             <p className="text-xl font-semibold pt-5">{title}</p>
@@ -78,6 +85,10 @@ function DataTable<TData, TValue> ({ columns, data, title, description }: DataTa
                     }
                     className="max-w-sm"
                 />
+                <Button variant="outline" onClick={handleRefresh}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                </Button>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="ml-auto">

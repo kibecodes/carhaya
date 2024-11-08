@@ -17,7 +17,7 @@ type ActionResponse = {
   error?: string;
 }
 
-export const handleCompleteBooking = async (id: number): Promise<ActionResponse> => {
+export const handleCompleteBooking = async (id: number): Promise<ActionResponse> => {  
   try {
     const sessionToken = await getSession();
     const token = sessionToken?.user.accessToken;
@@ -26,14 +26,18 @@ export const handleCompleteBooking = async (id: number): Promise<ActionResponse>
       return { error: "Authorization token missing", success: "" }; 
     }
 
-    const response = await axios.post(`https://carhire.transfa.org/api/bookings/complete?id=${id}`,{
-      headers: {
-        Authorization: `Bearer ${token}`
+    const response = await axios.post(`https://carhire.transfa.org/api/bookings/complete?id=${id}`,{},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       }
-    });
+      
+    );
 
     if (response.status === 200) {
       return { success: response.data }
+      
     }
     return { error: "Failed to complete booking", success: "" };
   } catch (error) {
@@ -66,11 +70,13 @@ export const handleCancelBooking = async (id: number): Promise<ActionResponse> =
       return { error: "Authorization token missing", success: "" }; 
     }
 
-    const response = await axios.post(`https://carhire.transfa.org/api/bookings/cancel?id=${id}`,{
-      headers: {
-        Authorization: `Bearer ${token}`
+    const response = await axios.post(`https://carhire.transfa.org/api/bookings/cancel?id=${id}`,{},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       }
-    });
+    );
 
     if (response.status === 200) {
       return { success: response.data }

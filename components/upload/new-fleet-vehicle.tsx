@@ -37,7 +37,6 @@ const NewFleetVehicle = () => {
     const [error, setError] = useState<string | undefined>("");
     const [success, setSuccess] = useState<string | undefined>("");
     const [isFormDisabled, setFormDisabled] = useState<boolean>(false);
-
     const [isPending, startTransition] = useTransition();
 
     const [images, setImages] = useState({
